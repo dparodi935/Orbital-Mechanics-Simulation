@@ -15,20 +15,33 @@ def position_values_for_orbit(r0, e_vector, normal, theta_correction, soi_positi
         return np.array([[0,0,0]]) 
     e = np.linalg.norm(e_vector)
     
+    theta_begin = 0
+    theta_end = 2*np.pi
     if e >= 1:
+        theta_begin = -0.5*np.pi + theta_correction
+        theta_end = 0.5*np.pi + theta_correction
         #cant currently handle drawing open orbits
-        return np.array([[0,0,0]])
+        #return np.array([[0,0,0]])
+        nu_limit = np.arccos(-1 / e) 
+        
+        theta_begin = -nu_limit + theta_correction
+        theta_end = nu_limit + theta_correction
     
     x_projection = e_vector/e
     y_projection = np.cross(normal, x_projection)
     y_projection = y_projection/np.linalg.norm(y_projection)
 
-    theta_values = np.linspace(0, 2*np.pi, 10000)
+    theta_values = np.linspace(theta_begin, theta_end, 10000)
     true_anomaly_values = theta_values - theta_correction
-
+    
     r_values = r0/(1 + e * np.cos(true_anomaly_values))
-    x_values = r_values * np.cos(true_anomaly_values)
-    y_values = r_values * np.sin(true_anomaly_values)
+    
+    filtered_indices = [i for i in range(len(r_values)) if r_values[i] > 0]
+    
+    x_values = r_values[filtered_indices] * np.cos(true_anomaly_values[filtered_indices])
+    y_values = r_values[filtered_indices] * np.sin(true_anomaly_values[filtered_indices])
+    
+    r_values = r_values[filtered_indices]
     
     position_values = soi_position + np.outer(np.array(y_values), y_projection) + np.outer(np.array(x_values), x_projection)
     
@@ -36,15 +49,18 @@ def position_values_for_orbit(r0, e_vector, normal, theta_correction, soi_positi
 
 #%% 2D Matplotlib Animation
 
-def update_frame_2D(frame, characters=None, pos_data=None, vel_data=None, lines=None, bodies_list=None):
+def update_frame_2D(frame, characters=None, pos_data=None, vel_data=None, soi_data=None, lines=None, bodies_list=None):
     for i in range(len(pos_data)): 
         x_values = pos_data[i][frame][0]
         y_values = pos_data[i][frame][1]
         characters[i].set_data([x_values], [y_values])
-        body = bodies_list[i]
         
         #TODO: put these 3 lines in single function above
-        soi = body.soi
+        if len(soi_data[i]) > 1:
+            soi = soi_data[i][frame]
+        else:
+            soi = soi_data[i][0]
+
         if not soi:
             continue
         
@@ -56,7 +72,7 @@ def update_frame_2D(frame, characters=None, pos_data=None, vel_data=None, lines=
         soi_velocity = vel_data[soi_index][frame]
         body_position = pos_data[i][frame]
         body_velocity = vel_data[i][frame]
-        
+    
         r0, e_vector, normal, theta_correction = calculations.determine_orbit_from_state(soi_mass, soi_position, soi_velocity, body_position, body_velocity)
         position_values = position_values_for_orbit(r0, e_vector, normal, theta_correction, soi_position)
                 
@@ -66,7 +82,7 @@ def update_frame_2D(frame, characters=None, pos_data=None, vel_data=None, lines=
     return tuple(characters)
 
 def create_2D_animation(master_bodies_list, time_values):
-    FRAMERATE = 15
+    FRAMERATE = 40
     characters = []
     lines = []
     colour_codes = {
@@ -97,13 +113,13 @@ def create_2D_animation(master_bodies_list, time_values):
     
     duration = time_values[-1]
     #frames_per_hour = 1
-    frames_per_hour = 20
-    FRAMERATE = frames_per_hour
+    frames_per_hour = 5
     num_frames = int(duration/3600 * frames_per_hour)
     intended_time_values = np.linspace(0,duration,num=num_frames)
   
     pos_data = []
     vel_data = []
+    soi_data = []
     
     for i, body in enumerate(master_bodies_list):
         factor = 238.36/greatest_extent
@@ -113,13 +129,14 @@ def create_2D_animation(master_bodies_list, time_values):
         
         characters.append(ax.plot([],[], style, markersize=markersize)[0])
         lines.append(ax.plot([],[], colour, lw=0.5)[0])
-        interpolated_position_history, interpolated_velocity_history = body.interpolate_history(time_values, intended_time_values)
-
+        interpolated_position_history, interpolated_velocity_history, interpolated_soi_history = body.interpolate_history(time_values, intended_time_values)
+        
+        soi_data.append(interpolated_soi_history)
         pos_data.append(interpolated_position_history)
         vel_data.append(interpolated_velocity_history)
 
     animation = FuncAnimation(
-                    func=partial(update_frame_2D, characters=characters, pos_data=pos_data, vel_data=vel_data, lines=lines, bodies_list=master_bodies_list),
+                    func=partial(update_frame_2D, characters=characters, pos_data=pos_data, vel_data=vel_data, soi_data=soi_data, lines=lines, bodies_list=master_bodies_list),
                     fig=fig,
                     frames=num_frames,
                     blit=True 

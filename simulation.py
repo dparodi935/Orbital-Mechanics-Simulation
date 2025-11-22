@@ -185,10 +185,7 @@ class sim():
                 
                 if self.SOIs[other_body] > distance:
                     body.soi = other_body 
-                
-    def draw_orbit(self):
-        pass
-    
+                    
     def execute_maneuver(self, maneuver_data):
         target_name = maneuver_data['satellite_name']
         maneuver_name = maneuver_data['maneuver_name']
