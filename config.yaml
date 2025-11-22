@@ -1,0 +1,52 @@
+# config.yaml
+
+SIMULATION_PARAMS:
+    duration: 0.35 #days
+    initial_dt: 1
+
+CALCULATION_PARAMS:
+    beta: 0.8 #0.8 or 0.9
+    vel_error_tol: 0.0000001 #velocity error tolerance in m/s
+    pos_error_tol: 0.0000001 #position error tolerance in m
+   
+ANIMATION_PARAMS:
+  type: 2D #2D, 3D, or None
+
+# Presets: earth, satellite, None
+# DON'T EDIT
+PRESET_BODIES:
+  - preset: sun
+    mass: 1.989e+30
+    radius: 6.957e+8
+    color: yellow
+    
+  - preset: earth
+    mass: 5.972e+24
+    radius: 6.378e+6
+    color: blue
+    
+  - preset: moon
+    mass: 7.346e+22
+    radius: 1.738e+6
+    color: green
+
+#Select the environment the simulation takes place in    
+# Frames: cislunar, earth, sol 
+FRAME:
+    frame: earth
+
+#Specify 
+BODIES:
+  - name: Satellite
+    mass: 1e+3
+    radius: 1
+    color: red
+    initial_pos: [400000,0,0] #give in altitude
+    initial_vel: [0,+8.5e+3,0]
+
+
+MANEUVERS:    
+  - satellite_name: Satellite
+    maneuver_name: Burn_1
+    delta_v: [750,0,000] #Prograde, 'radial', normal
+    time: 9000
