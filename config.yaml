@@ -12,7 +12,7 @@ CALCULATION_PARAMS:
 #set either save_animation OR live_display to "True" to generate animation. Currently the specific setting only affects 2D
 ANIMATION_PARAMS:
   mode: interactive #'saved' or 'interactive' or 'none'
-  dimensions: 3D #2D, 3D
+  dimensions: 2D #2D, 3D
   dpi: 200
   framerate: 35
   save_folder: "C:/Users/dp271/Downloads"
@@ -48,11 +48,12 @@ BODIES:
     radius: 1
     color: red
     initial_pos: [400000,0,0] #give in altitude
-    initial_vel: [0,+8.5e+3,0] #x,y,z
+    initial_vel: [0,+8.5e+3,0]
+    #initial_vel: [0,+8.5e+3,0] #x,y,z
 
 
 MANEUVERS:    
   - satellite_name: Satellite
-    maneuver_name: Burn_1
+    maneuver_name: "Burn 1"
     delta_v: [750,0,000] #Prograde, 'radial', normal
     time: 9000

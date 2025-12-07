@@ -175,7 +175,7 @@ class sim():
         if mode.lower() == "saved":
             end = perf_counter()
             print("Finished Animation")
-            print(f"Time to generate animation was {end-start} seconds")
+            print(f"Time to generate animation was {(end-start):.2f} seconds")
 
     def determine_SOIs(self):
         soi_names = [body.name for body in self.SOIs.keys()]
@@ -207,7 +207,8 @@ class sim():
         elif len(subject) > 1:
             print(f"WARNING: Multiple satellites with the name '{target_name}'. Did not execute the maneuver '{maneuver_name}'")
             return
-        
+        else:
+            print(f"Executing Maneuver '{maneuver_name}'")
         subject = subject[0]
         soi = subject.soi
         
@@ -243,7 +244,6 @@ class sim():
             #Check for and then execute maneuvers
             if len(incomplete_maneuver_times) > 0:
                 if np.isclose(incomplete_maneuver_times[0], time, atol=0.0001):
-                    print("Executing Maneuver")
                     self.execute_maneuver(incomplete_maneuvers_list[0])
                     del incomplete_maneuvers_list[0]
                     del incomplete_maneuver_times[0]
@@ -266,7 +266,7 @@ class sim():
 
         print("Simulation Finished")
         end = perf_counter()
-        print(f"Time to run simulation was {end-start} seconds")
+        print(f"Time to run simulation was {(end-start):.2f} seconds")
 
         self.create_animation()
 
