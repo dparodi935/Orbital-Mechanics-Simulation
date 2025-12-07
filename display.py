@@ -1,5 +1,3 @@
-#display.py
-import vpython as vp
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from functools import partial
@@ -339,46 +337,11 @@ def create_3D_matp_animation(master_bodies_list, time_values, frame, mode):
         plt.show(block=True)
 
 
-#%% 2D Plot
+#%% Static 2D Plot
     
 def plot(master_bodies_list):
     fig_2dplot, ax_2dplot = plt.subplots()
     for body in master_bodies_list:
         ax_2dplot.scatter(np.array(body.position_history)[:,0], np.array(body.position_history)[:, 1],s=0.01)
     plt.show()
-    
-#%% 3D VPython Animation - NEEDS TO BE UPDATED
-def update_frame_3D(master_bodies_list, frame):
-    FRAMERATE = 10
-    vp.rate(FRAMERATE)
 
-def create_3D_animation(master_bodies_list):
-    earth_graphic_params = {'radius':0.9*constants.earth_radius, 'color':vp.color.blue}
-    satellite_graphic_params = {'radius':1e+5, 'color':vp.color.red, 'make_trail':False, 'retain':50}
-    
-
-    for body in master_bodies_list:
-        if body.name == "earth":
-            body.sprite = vp.sphere(pos=vp.vector(*body.position_history[0]),**earth_graphic_params)
-        elif body.name == "satellite":
-            body.sprite = vp.sphere(pos=vp.vector(*body.position_history[0]),**satellite_graphic_params)  
-        else:
-            body.sprite = vp.sphere(pos=vp.vector(*body.position_history[0]),**satellite_graphic_params)  
-            
-    start_point = vp.vector(0, 0, 1.2*constants.earth_radius)
-    end_point = vp.vector(0, 0, -1.2*constants.earth_radius)
-    
-    # Create a curve object with just two points to form a line
-    vp.curve(pos=[start_point, end_point], color= vp.vector(0.8, 0.8, 0.8)) 
-    
-    vp.scene.camera.pos = vp.vector(3*constants.earth_radius, 0, 1*constants.earth_radius)
-    vp.scene.camera.up = vp.vector(0, 0, constants.earth_radius)
-    vp.scene.camera.axis = vp.vector(-3*constants.earth_radius, 0, -1*constants.earth_radius)
-    
-    for frame in range(len(master_bodies_list[0].position_history)):
-        update_frame_3D(master_bodies_list, frame)
-    
-
-    
-    for body in master_bodies_list:
-        body.sprite.pos = vp.vector(*body.position_history[frame])
