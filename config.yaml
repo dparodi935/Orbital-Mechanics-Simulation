@@ -1,7 +1,7 @@
 # config.yaml
 
 SIMULATION_PARAMS:
-    duration: 0.35 #days
+    duration: 1 #days
     initial_dt: 1
 
 CALCULATION_PARAMS:
@@ -9,7 +9,10 @@ CALCULATION_PARAMS:
     vel_error_tol: 0.0000001 #velocity error tolerance in m/s
     pos_error_tol: 0.0000001 #position error tolerance in m
    
+#set either save_animation or live_display to "True" to generate animation. Currently the specific setting only affects 2D
 ANIMATION_PARAMS:
+  save_animation: True
+  live_display: True
   type: 2D #2D, 3D, or None
 
 # Presets: earth, satellite, None

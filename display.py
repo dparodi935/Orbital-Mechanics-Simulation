@@ -5,7 +5,10 @@ from functools import partial
 import calculations 
 import constants
 import numpy as np
-from matplotlib.ticker import FuncFormatter
+
+import matplotlib
+matplotlib.use('Qt5Agg') 
+
 #%%
 def position_values_for_orbit(r0, e_vector, normal, theta_correction, soi_position):
     ''' Takes in parameters of an orbit and returns position values to plot it
@@ -13,6 +16,7 @@ def position_values_for_orbit(r0, e_vector, normal, theta_correction, soi_positi
     if not r0:
         #in case body isnt orbiting anything
         return np.array([[0,0,0]]) 
+    
     e = np.linalg.norm(e_vector)
     
     theta_begin = 0
@@ -20,8 +24,6 @@ def position_values_for_orbit(r0, e_vector, normal, theta_correction, soi_positi
     if e >= 1:
         theta_begin = -0.5*np.pi + theta_correction
         theta_end = 0.5*np.pi + theta_correction
-        #cant currently handle drawing open orbits
-        #return np.array([[0,0,0]])
         nu_limit = np.arccos(-1 / e) 
         
         theta_begin = -nu_limit + theta_correction
@@ -55,6 +57,7 @@ def update_frame_2D(frame, characters=None, pos_data=None, vel_data=None, soi_da
         y_values = pos_data[i][frame][1]
         characters[i].set_data([x_values], [y_values])
         
+
         #TODO: put these 3 lines in single function above
         if len(soi_data[i]) > 1:
             soi = soi_data[i][frame]
@@ -78,10 +81,9 @@ def update_frame_2D(frame, characters=None, pos_data=None, vel_data=None, soi_da
                 
         lines[i].set_data(*position_values[:,:2].T)    
    
+    return characters + lines
 
-    return tuple(characters)
-
-def create_2D_animation(master_bodies_list, time_values):
+def create_2D_animation(master_bodies_list, time_values, save_animation, live_display):
     FRAMERATE = 40
     characters = []
     lines = []
@@ -106,14 +108,14 @@ def create_2D_animation(master_bodies_list, time_values):
     ax.set_xlim(-display_half_width, display_half_width)
     ax.set_ylim(-display_half_width, display_half_width)
     ax.set_aspect('equal', adjustable='box')
-    #ax.grid(True)
     ax.set_xlabel('x (m)')
     ax.set_ylabel('y (m)')
     
     
     duration = time_values[-1]
     #frames_per_hour = 1
-    frames_per_hour = 5
+    #frames_per_hour = 5
+    frames_per_hour = 20
     num_frames = int(duration/3600 * frames_per_hour)
     intended_time_values = np.linspace(0,duration,num=num_frames)
   
@@ -134,22 +136,29 @@ def create_2D_animation(master_bodies_list, time_values):
         soi_data.append(interpolated_soi_history)
         pos_data.append(interpolated_position_history)
         vel_data.append(interpolated_velocity_history)
-
+    
     animation = FuncAnimation(
                     func=partial(update_frame_2D, characters=characters, pos_data=pos_data, vel_data=vel_data, soi_data=soi_data, lines=lines, bodies_list=master_bodies_list),
                     fig=fig,
                     frames=num_frames,
-                    blit=True 
+                    blit=True,
+                    repeat=True,
+                    interval=1000/FRAMERATE
                 )
-    
         
-    animation.save(
-        'C:/Users/dp271/Downloads/gravity_sim.mp4', 
-        writer='ffmpeg', 
-        fps=FRAMERATE,  
-        dpi=200  
-    )
-    return animation
+    if save_animation:
+        animation.save(
+            'C:/Users/dp271/Downloads/gravity_sim.mp4', 
+            writer='ffmpeg', 
+            fps=FRAMERATE,  
+            dpi=200  
+        )
+
+    if live_display:        
+        fig.canvas.draw()
+        plt.show()
+    
+    plt.close()
 
 #%% 3d Matplotlib Animation
 

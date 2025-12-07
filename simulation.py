@@ -2,6 +2,7 @@ import calculations, display, bodies
 import yaml
 import numpy as np
 from time import perf_counter
+import matplotlib.pyplot as plt 
 
 class sim():
     
@@ -152,22 +153,25 @@ class sim():
     def create_animation(self):
         start = perf_counter()
         
-        animation_type = self.params["ANIMATION_PARAMS"]["type"]
-        if animation_type == "2D":
-            print("Saving Animation")
-            display.create_2D_animation(self.master_bodies_list, self.time_values)
-        elif animation_type == "3D":
-            print("Saving Animation")
-            display.create_3D_matp_animation(self.master_bodies_list, self.time_values, self.frame)
-        elif animation_type.lower() == "none":
-            return
-        else:
-            print("Invalid Animation Type. Animation not created")
-            return
-        end = perf_counter()
-        print("Finished Animation")
-        print(f"Time to generate animation was {end-start} seconds")
-    
+        animation_type, save_animation, live_display = self.params["ANIMATION_PARAMS"]["type"], self.params["ANIMATION_PARAMS"]["save_animation"], self.params["ANIMATION_PARAMS"]["live_display"]
+        if save_animation or live_display:
+            if animation_type == "2D":
+                print("Saving Animation")
+                display.create_2D_animation(self.master_bodies_list, self.time_values, save_animation, live_display)
+            elif animation_type == "3D":
+                print("Saving Animation")
+                display.create_3D_matp_animation(self.master_bodies_list, self.time_values, self.frame)
+            elif animation_type.lower() == "none":
+                return
+            else:
+                end = perf_counter()
+                print("Invalid Animation Type. Animation not created")
+                return
+            
+            end = perf_counter()
+            print("Finished Animation")
+            print(f"Time to generate animation was {end-start} seconds")
+
     def determine_SOIs(self):
         soi_names = [body.name for body in self.SOIs.keys()]
         
