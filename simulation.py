@@ -144,7 +144,7 @@ class sim():
     
     def retrieve_calc_params(self):
         calc_params = self.params["CALCULATION_PARAMS"]
-        beta = calc_params["beta"]  #0.8 or 0.9
+        beta = calc_params["beta"]  
         vel_error_tol = calc_params["vel_error_tol"]  #velocity error tolerance in m/s
         pos_error_tol = calc_params["pos_error_tol"] #position error tolerance in m
         return beta, vel_error_tol, pos_error_tol
@@ -152,7 +152,8 @@ class sim():
     def create_animation(self):
         start = perf_counter()
         
-        dimensions, mode = self.params["ANIMATION_PARAMS"]["dimensions"], self.params["ANIMATION_PARAMS"]["mode"]
+        animation_params = self.params["ANIMATION_PARAMS"]
+        dimensions, mode = animation_params["dimensions"], animation_params["mode"]
        
         if mode.lower() == "saved":
             print("Saving Animation")
@@ -165,9 +166,9 @@ class sim():
             return
             
         if dimensions == "2D":
-            display.create_2D_animation(self.master_bodies_list, self.time_values, self.frame, mode)
+            display.create_2D_animation(self.master_bodies_list, self.time_values, self.frame, animation_params)
         elif dimensions == "3D":
-            display.create_3D_matp_animation(self.master_bodies_list, self.time_values, self.frame, mode)
+            display.create_3D_matp_animation(self.master_bodies_list, self.time_values, self.frame, animation_params)
         else:
             print("Invalid value entered for dimensions. Animation not created")
         

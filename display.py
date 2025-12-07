@@ -48,9 +48,33 @@ def position_values_for_orbit(r0, e_vector, normal, theta_correction, soi_positi
     
     return position_values
 
+#%% Display Functions
+
+def display_time(time):   
+   if np.log10(time/3600 + 0.00001) > 1:
+       decimal = 0 
+   else:
+       decimal = 1
+   return f"Time = {time/3600:.{decimal}f} hrs"    
+
+
 #%% 2D Matplotlib Animation
 
-def update_frame_2D(frame, characters=None, lines=None, pos_data=None, vel_data=None, soi_data=None, bodies_list=None):
+def update_frame_2D(frame, sim_data=None):
+    characters, lines, pos_data, vel_data, soi_data, bodies_list, timer, time_data = (
+        sim_data["characters"],
+        sim_data["lines"],
+        sim_data["pos_data"],
+        sim_data["vel_data"],
+        sim_data["soi_data"],
+        sim_data["bodies_list"],
+        sim_data["timer"],
+        sim_data["time_data"]
+    )
+    
+    time = display_time(time_data[frame])
+    timer.set_text(time)
+    
     for i in range(len(pos_data)): 
         x_values = pos_data[i][frame][0]
         y_values = pos_data[i][frame][1]
@@ -80,10 +104,11 @@ def update_frame_2D(frame, characters=None, lines=None, pos_data=None, vel_data=
                 
         lines[i].set_data(*position_values[:,:2].T)    
    
-    return characters + lines
+    return characters + lines + [timer]
 
-def create_2D_animation(master_bodies_list, time_values, frame, mode):
-    FRAMERATE = 40
+def create_2D_animation(master_bodies_list, time_values, frame, animation_params):
+    mode, framerate, dpi, save_folder, filename = animation_params["mode"], animation_params["framerate"], animation_params["dpi"], animation_params["save_folder"], animation_params["filename"]
+    
     characters = []
     lines = []
     colour_codes = {
@@ -126,6 +151,8 @@ def create_2D_animation(master_bodies_list, time_values, frame, mode):
     vel_data = []
     soi_data = []
     
+    timer = ax.text(0.995,0.99,"Time = 0 hrs", verticalalignment='top', horizontalalignment='right', transform=ax.transAxes, fontsize='small')
+    
     for i, body in enumerate(master_bodies_list):
         factor = 238.36/greatest_extent
         markersize = max(body.radius*factor, 5)
@@ -140,30 +167,58 @@ def create_2D_animation(master_bodies_list, time_values, frame, mode):
         vel_data.append(interpolated_velocity_history)
         soi_data.append(interpolated_soi_history)
     
+    sim_data = {
+    "characters": characters,
+    "lines": lines,
+    "pos_data": pos_data,
+    "vel_data": vel_data,
+    "soi_data": soi_data,
+    "bodies_list": master_bodies_list,
+    "timer": timer,
+    "time_data": intended_time_values 
+     }
+    
     animation = FuncAnimation(
-                    func=partial(update_frame_2D, characters=characters, lines=lines, pos_data=pos_data, vel_data=vel_data, soi_data=soi_data, bodies_list=master_bodies_list),
+                    #func=partial(update_frame_2D, characters=characters, lines=lines, pos_data=pos_data, vel_data=vel_data, soi_data=soi_data, bodies_list=master_bodies_list),
+                    func=partial(update_frame_2D, sim_data=sim_data),
                     fig=fig,
                     frames=num_frames,
                     blit=True,
                     repeat=True,
-                    interval=1000/FRAMERATE
+                    interval=1000/framerate
                 )
         
     if mode.lower() == 'saved':
         animation.save(
-            'C:/Users/dp271/Downloads/gravity_sim.mp4', 
+            f'{save_folder}/{filename}.mp4', 
             writer='ffmpeg', 
-            fps=FRAMERATE,  
-            dpi=200  
+            fps=framerate,  
+            dpi=dpi  
         )
         plt.close()
+        
     elif mode.lower() == 'interactive':        
         fig.canvas.draw()
         plt.show()
 
 #%% 3d Matplotlib Animation
 
-def update_matp_frame_3D(frame, characters=None, lines=None, trajectory_lines=None, pos_data=None, vel_data=None, soi_data=None, bodies_list=None):
+def update_matp_frame_3D(frame, sim_data=None):
+    characters, lines, trajectory_lines, pos_data, vel_data, soi_data, bodies_list, timer, time_data = (
+        sim_data["characters"],
+        sim_data["lines"],
+        sim_data["trajectory_lines"],
+        sim_data["pos_data"],
+        sim_data["vel_data"],
+        sim_data["soi_data"],
+        sim_data["bodies_list"],
+        sim_data["timer"],
+        sim_data["time_data"]
+    )
+    
+    time = display_time(time_data[frame])
+    timer.set_text(time)
+    
     for i in range(len(pos_data)): 
         x_value = pos_data[i][frame][0]
         y_value = pos_data[i][frame][1]
@@ -210,7 +265,7 @@ def update_matp_frame_3D(frame, characters=None, lines=None, trajectory_lines=No
         trajectory_lines[i].set_data(*position_values[:,:2].T)  
         trajectory_lines[i].set_3d_properties(position_values[:,2].T)
         
-    return characters + lines + trajectory_lines
+    return characters + lines + trajectory_lines + [timer]
 
 def generate_sphere(centre, radius, theta_bounds = [0, np.pi], phi_bounds = [0 , 2*np.pi]):
     theta = np.linspace(*theta_bounds, 100)
@@ -221,7 +276,9 @@ def generate_sphere(centre, radius, theta_bounds = [0, np.pi], phi_bounds = [0 ,
     z = centre[2] + radius * np.outer(np.cos(theta), np.ones(np.size(theta)))
     return x, y, z
 
-def create_3D_matp_animation(master_bodies_list, time_values, frame, mode):
+def create_3D_matp_animation(master_bodies_list, time_values, frame, animation_params):
+    mode, framerate, dpi, save_folder, filename = animation_params["mode"], animation_params["framerate"], animation_params["dpi"], animation_params["save_folder"], animation_params["filename"]
+    
     characters = []
     lines = []
     trajectory_lines = []
@@ -287,14 +344,14 @@ def create_3D_matp_animation(master_bodies_list, time_values, frame, mode):
     else:
         frames_per_hour = 20
         
-    #FRAMERATE = frames_per_hour
-    FRAMERATE = 40
     num_frames = int(duration/3600 * frames_per_hour)
     intended_time_values = np.linspace(0,duration,num=num_frames)
   
     pos_data = []
     vel_data = []
     soi_data = []
+    
+    timer = ax.text2D(0.995,0.99,"Time = 0 hrs", verticalalignment='top', horizontalalignment='right', transform=ax.transAxes, fontsize='small')
     
     for i, body in enumerate(master_bodies_list):
         if body.name.lower() == "earth" and frame == "Earth":
@@ -314,22 +371,34 @@ def create_3D_matp_animation(master_bodies_list, time_values, frame, mode):
         vel_data.append(interpolated_velocity_history)
         soi_data.append(interpolated_soi_history)
     
+    sim_data = {
+    "characters": characters,
+    "lines": lines,
+    "trajectory_lines": trajectory_lines,
+    "pos_data": pos_data,
+    "vel_data": vel_data,
+    "soi_data": soi_data,
+    "bodies_list": master_bodies_list,
+    "timer": timer,
+    "time_data": intended_time_values 
+     }
+    
     #change partial so the arguments are zipped for clarity
     animation = FuncAnimation(
-                    func=partial(update_matp_frame_3D, characters=characters, lines=lines, trajectory_lines=trajectory_lines, pos_data=pos_data, vel_data=vel_data, soi_data=soi_data, bodies_list=master_bodies_list),
+                    func=partial(update_matp_frame_3D, sim_data=sim_data),
                     fig=fig,
                     frames=num_frames,
                     blit=False, 
                     repeat=True,
-                    interval=1000/FRAMERATE
+                    interval=1000/framerate
                 )
     
     if mode.lower() == 'saved':
         animation.save(
-            'C:/Users/dp271/Downloads/gravity_sim.mp4', 
+            f'{save_folder}/{filename}.mp4', 
             writer='ffmpeg', 
-            fps=FRAMERATE,  
-            dpi=200  
+            fps=framerate,  
+            dpi=dpi  
         )
         plt.close()
     elif mode.lower() == 'interactive':

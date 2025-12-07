@@ -13,7 +13,11 @@ CALCULATION_PARAMS:
 ANIMATION_PARAMS:
   mode: interactive #'saved' or 'interactive' or 'none'
   dimensions: 3D #2D, 3D
-
+  dpi: 200
+  framerate: 35
+  save_folder: "C:/Users/dp271/Downloads"
+  filename: "gravity_sim"
+  
 # Presets: earth, satellite, None
 # DON'T EDIT
 PRESET_BODIES:
