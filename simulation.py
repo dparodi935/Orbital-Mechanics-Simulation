@@ -2,7 +2,6 @@ import calculations, display, bodies
 import yaml
 import numpy as np
 from time import perf_counter
-import matplotlib.pyplot as plt 
 
 class sim():
     
@@ -153,21 +152,26 @@ class sim():
     def create_animation(self):
         start = perf_counter()
         
-        animation_type, save_animation, live_display = self.params["ANIMATION_PARAMS"]["type"], self.params["ANIMATION_PARAMS"]["save_animation"], self.params["ANIMATION_PARAMS"]["live_display"]
-        if save_animation or live_display:
-            if animation_type == "2D":
-                print("Saving Animation")
-                display.create_2D_animation(self.master_bodies_list, self.time_values, save_animation, live_display)
-            elif animation_type == "3D":
-                print("Saving Animation")
-                display.create_3D_matp_animation(self.master_bodies_list, self.time_values, self.frame)
-            elif animation_type.lower() == "none":
-                return
-            else:
-                end = perf_counter()
-                print("Invalid Animation Type. Animation not created")
-                return
+        dimensions, mode = self.params["ANIMATION_PARAMS"]["dimensions"], self.params["ANIMATION_PARAMS"]["mode"]
+       
+        if mode.lower() == "saved":
+            print("Saving Animation")
+        elif mode.lower() == "interactive":
+            print("Displaying Simulation")
+        elif mode.lower() == "none":
+            return
+        else:
+            print("Invalid parameter entered for 'mode'")
+            return
             
+        if dimensions == "2D":
+            display.create_2D_animation(self.master_bodies_list, self.time_values, self.frame, mode)
+        elif dimensions == "3D":
+            display.create_3D_matp_animation(self.master_bodies_list, self.time_values, self.frame, mode)
+        else:
+            print("Invalid value entered for dimensions. Animation not created")
+        
+        if mode.lower() == "saved":
             end = perf_counter()
             print("Finished Animation")
             print(f"Time to generate animation was {end-start} seconds")
@@ -264,6 +268,6 @@ class sim():
         print(f"Time to run simulation was {end-start} seconds")
 
         self.create_animation()
-    
+
     def plot(self):
         display.plot(self.master_bodies_list)

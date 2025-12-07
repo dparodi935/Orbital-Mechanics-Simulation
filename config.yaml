@@ -1,7 +1,7 @@
 # config.yaml
 
 SIMULATION_PARAMS:
-    duration: 1 #days
+    duration: 0.6 #days
     initial_dt: 1
 
 CALCULATION_PARAMS:
@@ -9,11 +9,10 @@ CALCULATION_PARAMS:
     vel_error_tol: 0.0000001 #velocity error tolerance in m/s
     pos_error_tol: 0.0000001 #position error tolerance in m
    
-#set either save_animation or live_display to "True" to generate animation. Currently the specific setting only affects 2D
+#set either save_animation OR live_display to "True" to generate animation. Currently the specific setting only affects 2D
 ANIMATION_PARAMS:
-  save_animation: True
-  live_display: True
-  type: 2D #2D, 3D, or None
+  mode: interactive #'saved' or 'interactive' or 'none'
+  dimensions: 3D #2D, 3D
 
 # Presets: earth, satellite, None
 # DON'T EDIT
@@ -45,7 +44,7 @@ BODIES:
     radius: 1
     color: red
     initial_pos: [400000,0,0] #give in altitude
-    initial_vel: [0,+8.5e+3,0]
+    initial_vel: [0,+8.5e+3,0] #x,y,z
 
 
 MANEUVERS:    

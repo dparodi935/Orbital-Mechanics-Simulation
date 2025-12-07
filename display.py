@@ -1,3 +1,4 @@
+#display.py
 import vpython as vp
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -51,7 +52,7 @@ def position_values_for_orbit(r0, e_vector, normal, theta_correction, soi_positi
 
 #%% 2D Matplotlib Animation
 
-def update_frame_2D(frame, characters=None, pos_data=None, vel_data=None, soi_data=None, lines=None, bodies_list=None):
+def update_frame_2D(frame, characters=None, lines=None, pos_data=None, vel_data=None, soi_data=None, bodies_list=None):
     for i in range(len(pos_data)): 
         x_values = pos_data[i][frame][0]
         y_values = pos_data[i][frame][1]
@@ -83,7 +84,7 @@ def update_frame_2D(frame, characters=None, pos_data=None, vel_data=None, soi_da
    
     return characters + lines
 
-def create_2D_animation(master_bodies_list, time_values, save_animation, live_display):
+def create_2D_animation(master_bodies_list, time_values, frame, mode):
     FRAMERATE = 40
     characters = []
     lines = []
@@ -113,9 +114,13 @@ def create_2D_animation(master_bodies_list, time_values, save_animation, live_di
     
     
     duration = time_values[-1]
-    #frames_per_hour = 1
-    #frames_per_hour = 5
-    frames_per_hour = 20
+    if frame == "earth":
+        frames_per_hour = 20
+    elif frame == "cislunar":
+        frames_per_hour = 1
+    else:
+        frames_per_hour = 20
+
     num_frames = int(duration/3600 * frames_per_hour)
     intended_time_values = np.linspace(0,duration,num=num_frames)
   
@@ -133,12 +138,12 @@ def create_2D_animation(master_bodies_list, time_values, save_animation, live_di
         lines.append(ax.plot([],[], colour, lw=0.5)[0])
         interpolated_position_history, interpolated_velocity_history, interpolated_soi_history = body.interpolate_history(time_values, intended_time_values)
         
-        soi_data.append(interpolated_soi_history)
         pos_data.append(interpolated_position_history)
         vel_data.append(interpolated_velocity_history)
+        soi_data.append(interpolated_soi_history)
     
     animation = FuncAnimation(
-                    func=partial(update_frame_2D, characters=characters, pos_data=pos_data, vel_data=vel_data, soi_data=soi_data, lines=lines, bodies_list=master_bodies_list),
+                    func=partial(update_frame_2D, characters=characters, lines=lines, pos_data=pos_data, vel_data=vel_data, soi_data=soi_data, bodies_list=master_bodies_list),
                     fig=fig,
                     frames=num_frames,
                     blit=True,
@@ -146,23 +151,21 @@ def create_2D_animation(master_bodies_list, time_values, save_animation, live_di
                     interval=1000/FRAMERATE
                 )
         
-    if save_animation:
+    if mode.lower() == 'saved':
         animation.save(
             'C:/Users/dp271/Downloads/gravity_sim.mp4', 
             writer='ffmpeg', 
             fps=FRAMERATE,  
             dpi=200  
         )
-
-    if live_display:        
+        plt.close()
+    elif mode.lower() == 'interactive':        
         fig.canvas.draw()
         plt.show()
-    
-    plt.close()
 
 #%% 3d Matplotlib Animation
 
-def update_matp_frame_3D(frame, characters=None, lines=None, trajectory_lines=None, pos_data=None, vel_data=None, bodies_list=None):
+def update_matp_frame_3D(frame, characters=None, lines=None, trajectory_lines=None, pos_data=None, vel_data=None, soi_data=None, bodies_list=None):
     for i in range(len(pos_data)): 
         x_value = pos_data[i][frame][0]
         y_value = pos_data[i][frame][1]
@@ -181,11 +184,18 @@ def update_matp_frame_3D(frame, characters=None, lines=None, trajectory_lines=No
             lines[i].set_zorder(9)
             characters[i].set_zorder(10) 
             
-        body = bodies_list[i]
+        #body = bodies_list[i]
+       
         
-        soi = body.soi
+        if len(soi_data[i]) > 1:
+            soi = soi_data[i][frame]
+        else:
+            soi = soi_data[i][0]
+
         if not soi:
             continue
+        
+        #soi = body.soi
         
         # Calculate and plot the trajectory
         soi_index = bodies_list.index(soi)
@@ -202,9 +212,7 @@ def update_matp_frame_3D(frame, characters=None, lines=None, trajectory_lines=No
         trajectory_lines[i].set_data(*position_values[:,:2].T)  
         trajectory_lines[i].set_3d_properties(position_values[:,2].T)
         
-
-
-    return tuple(characters + lines)
+    return characters + lines + trajectory_lines
 
 def generate_sphere(centre, radius, theta_bounds = [0, np.pi], phi_bounds = [0 , 2*np.pi]):
     theta = np.linspace(*theta_bounds, 100)
@@ -215,7 +223,7 @@ def generate_sphere(centre, radius, theta_bounds = [0, np.pi], phi_bounds = [0 ,
     z = centre[2] + radius * np.outer(np.cos(theta), np.ones(np.size(theta)))
     return x, y, z
 
-def create_3D_matp_animation(master_bodies_list, time_values, frame):
+def create_3D_matp_animation(master_bodies_list, time_values, frame, mode):
     characters = []
     lines = []
     trajectory_lines = []
@@ -282,12 +290,13 @@ def create_3D_matp_animation(master_bodies_list, time_values, frame):
         frames_per_hour = 20
         
     #FRAMERATE = frames_per_hour
-    FRAMERATE = 15
+    FRAMERATE = 40
     num_frames = int(duration/3600 * frames_per_hour)
     intended_time_values = np.linspace(0,duration,num=num_frames)
   
     pos_data = []
     vel_data = []
+    soi_data = []
     
     for i, body in enumerate(master_bodies_list):
         if body.name.lower() == "earth" and frame == "Earth":
@@ -301,27 +310,33 @@ def create_3D_matp_animation(master_bodies_list, time_values, frame):
         lines.append(ax.plot([],[],[], colour, lw=0.5, zorder=9)[0])
         trajectory_lines.append(ax.plot([],[],[], colour, lw=0.5, zorder=9)[0])
         
-        interpolated_position_history, interpolated_velocity_history = body.interpolate_history(time_values, intended_time_values)
+        interpolated_position_history, interpolated_velocity_history, interpolated_soi_history = body.interpolate_history(time_values, intended_time_values)
 
         pos_data.append(interpolated_position_history)
         vel_data.append(interpolated_velocity_history)
+        soi_data.append(interpolated_soi_history)
     
+    #change partial so the arguments are zipped for clarity
     animation = FuncAnimation(
-                    func=partial(update_matp_frame_3D, characters=characters, lines=lines, trajectory_lines=trajectory_lines, pos_data=pos_data, vel_data=vel_data, bodies_list=master_bodies_list),
+                    func=partial(update_matp_frame_3D, characters=characters, lines=lines, trajectory_lines=trajectory_lines, pos_data=pos_data, vel_data=vel_data, soi_data=soi_data, bodies_list=master_bodies_list),
                     fig=fig,
                     frames=num_frames,
-                    blit=True 
+                    blit=False, 
+                    repeat=True,
+                    interval=1000/FRAMERATE
                 )
-        
-    animation.save(
-        'C:/Users/dp271/Downloads/gravity_sim.mp4', 
-        writer='ffmpeg', 
-        fps=FRAMERATE,  
-        dpi=250  
-    )
-
-    plt.close()
-    return animation
+    
+    if mode.lower() == 'saved':
+        animation.save(
+            'C:/Users/dp271/Downloads/gravity_sim.mp4', 
+            writer='ffmpeg', 
+            fps=FRAMERATE,  
+            dpi=200  
+        )
+        plt.close()
+    elif mode.lower() == 'interactive':
+        fig.canvas.draw()
+        plt.show(block=True)
 
 
 #%% 2D Plot
