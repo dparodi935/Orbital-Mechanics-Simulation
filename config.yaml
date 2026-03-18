@@ -11,7 +11,7 @@ CALCULATION_PARAMS:
    
 #set either save_animation OR live_display to "True" to generate animation. Currently the specific setting only affects 2D
 ANIMATION_PARAMS:
-  mode: interactive #'saved' or 'interactive' or 'none'
+  mode: saved #'saved' or 'interactive' or 'none'
   dimensions: 2D #2D, 3D
   dpi: 200
   framerate: 35
@@ -47,8 +47,9 @@ BODIES:
     mass: 1e+3
     radius: 1
     color: red
-    initial_pos: [400000,0,0] #give in altitude
-    initial_vel: [0,+8.5e+3,0]
+    initial_pos: [400000,0,0] #give in altitude (above the body its orbiting)
+    velocity_input_mode: polar #'cartesian' or 'polar'
+    initial_vel: [+8.5e+3,0,500] # tangential speed, inclination, radial speed
     #initial_vel: [0,+8.5e+3,0] #x,y,z
 
 

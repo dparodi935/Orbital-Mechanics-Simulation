@@ -13,9 +13,28 @@ class sim():
         self.maneuvers_list, self.maneuver_times = self.create_maneuver_list()
         
         self.determine_SOIs()
+        self.configure_body_velocities()
         
         self.time_values = [0]
-            
+    
+    def return_direction_vectors(self, subject, soi):
+        ''' Returns the prograde, radial and normal vectors of an orbiting body (subject)
+        '''
+                
+        relative_position = subject.position - soi.position + 0.000000001*np.ones(3)
+        relative_velocity = subject.velocity - soi.velocity + 0.000000001*np.ones(3)
+        speed = np.linalg.norm(relative_velocity)
+        
+        #calculating the three directions
+        prograde_vector = relative_velocity/speed
+        normal_vector = np.cross(relative_position, prograde_vector)/np.linalg.norm(np.cross(relative_position, prograde_vector))
+        radial_vector = np.cross(prograde_vector, normal_vector)/np.linalg.norm(np.cross(prograde_vector, normal_vector))
+
+        return prograde_vector, radial_vector, normal_vector
+
+    
+    ''' SIMULATION INITIALISATION
+    '''
     def open_config_file(self, name):
         with open(f'{name}.yaml', 'r') as file:
             return yaml.safe_load(file)
@@ -83,30 +102,66 @@ class sim():
             
             return [sun_data, earth_data, moon_data], central_radius 
         else:
-            print("Unrecognised reference frame")
+            print("ERROR: Unrecognised reference frame")
         
     def create_master_bodies_list(self):
+        ''' Generate list of active bodies from the config file
+        '''
         body_data = self.params['BODIES']
         master_bodies_list = []
         
         frame_bodies, central_radius = self.generate_frame() 
+        
         for body in frame_bodies:
             master_bodies_list.append(bodies.body(*body))
         
-        if body_data:
-            for body in body_data:
-                mass = float(body['mass'])
-                radius =  float(body['radius'])
-                colour = body['color']
-    
-                position = np.array([float(item) for item in body['initial_pos']] )
-                position += central_radius * position/np.linalg.norm(position) 
-                velocity = [float(item) for item in body['initial_vel']]
-                name = body['name']
-                
-                master_bodies_list.append(bodies.body(mass, radius, position, velocity, name, colour))
+        if not body_data: 
+            return master_bodies_list
+            
+        for body in body_data:
+            mass = float(body['mass'])
+            radius =  float(body['radius'])
+            colour = body['color']
 
+            position = np.array([float(item) for item in body['initial_pos']] )
+            position += central_radius * position/np.linalg.norm(position) 
+                                
+            dummy_velocity = np.zeros(3)
+            
+            name = body['name']
+            
+            master_bodies_list.append(bodies.body(mass, radius, position, dummy_velocity, name, colour))
+        
         return master_bodies_list
+
+    
+    def configure_body_velocities(self):
+        body_data = self.params['BODIES']
+
+        if not body_data:      
+            return
+    
+        for body_input in body_data:
+            body = [i for i in self.master_bodies_list if i.name == body_input['name']][0]
+
+            if body_input['velocity_input_mode'] == 'cartesian':
+                velocity = [float(item) for item in body_input['initial_vel']]
+            
+            elif body_input['velocity_input_mode'] == 'polar': #CHANGE NAME FROM POLAR
+                tangential_speed = float(body_input['initial_vel'][0])
+                inclination_angle = float(body_input['initial_vel'][1])
+                radial_speed = float(body_input['initial_vel'][2])
+                
+                soi = body.soi
+                
+                prograde_vector, radial_vector, normal_vector = self.return_direction_vectors(body, soi)
+                velocity = prograde_vector * tangential_speed * np.cos(inclination_angle) + radial_vector * radial_speed + normal_vector * tangential_speed * np.sin(inclination_angle)
+                
+            else:
+                print(f"ERROR: Invalid input for 'vel_input_mode' for the body {body_input.name}")
+                
+            body.velocity = velocity
+
     
     def create_maneuver_list(self):
         maneuvers_data = self.params['MANEUVERS']
@@ -141,6 +196,7 @@ class sim():
             SOIs[body] = soi  
         
         return SOIs
+
     
     def retrieve_calc_params(self):
         calc_params = self.params["CALCULATION_PARAMS"]
@@ -148,6 +204,9 @@ class sim():
         vel_error_tol = calc_params["vel_error_tol"]  #velocity error tolerance in m/s
         pos_error_tol = calc_params["pos_error_tol"] #position error tolerance in m
         return beta, vel_error_tol, pos_error_tol
+    
+    ''' VISUALISATION
+    '''
     
     def create_animation(self):
         start = perf_counter()
@@ -162,7 +221,7 @@ class sim():
         elif mode.lower() == "none":
             return
         else:
-            print("Invalid parameter entered for 'mode'")
+            print("ERROR: Invalid parameter entered for animation 'mode'")
             return
             
         if dimensions == "2D":
@@ -170,31 +229,20 @@ class sim():
         elif dimensions == "3D":
             display.create_3D_matp_animation(self.master_bodies_list, self.time_values, self.frame, animation_params)
         else:
-            print("Invalid value entered for dimensions. Animation not created")
+            print("ERROR: Invalid value entered for dimensions. Animation not created")
         
         if mode.lower() == "saved":
             end = perf_counter()
             print("Finished Animation")
             print(f"Time to generate animation was {(end-start):.2f} seconds")
 
-    def determine_SOIs(self):
-        soi_names = [body.name for body in self.SOIs.keys()]
-        
-        for body in self.master_bodies_list:
-            if body.name == soi_names[0]:
-                continue
-            body.soi = list(self.SOIs.keys())[0]
-            
-            for other_body in self.SOIs.keys():
-                if body.name == other_body.name:
-                    #break since you can't be in the SOI of a less massive body
-                    break
-                
-                distance = np.linalg.norm(other_body.position - body.position)
-                
-                if self.SOIs[other_body] > distance:
-                    body.soi = other_body 
-                    
+    def plot(self):
+        display.plot(self.master_bodies_list)
+
+
+    ''' FUNCTIONS RUN DURING MAIN LOOP
+    '''                    
+    
     def execute_maneuver(self, maneuver_data):
         target_name = maneuver_data['satellite_name']
         maneuver_name = maneuver_data['maneuver_name']
@@ -212,20 +260,37 @@ class sim():
         subject = subject[0]
         soi = subject.soi
         
-        relative_position = subject.position - soi.position
-        relative_velocity = subject.velocity - soi.velocity
-        speed = np.linalg.norm(relative_velocity)
-        
-        #calculating the three directions
-        prograde_vector = relative_velocity/speed
-        normal_vector = np.cross(relative_position, prograde_vector)/np.linalg.norm(np.cross(relative_position, prograde_vector))
-        radial_vector = np.cross(prograde_vector, normal_vector)/np.linalg.norm(np.cross(prograde_vector, normal_vector))
+        prograde_vector, radial_vector, normal_vector = self.return_direction_vectors(subject, soi)
         
         subject.velocity += delta_v[0] * prograde_vector + delta_v[1] * radial_vector + delta_v[2] * normal_vector
     
     def update_bodies(self):
         for body in self.master_bodies_list:
             body.update()
+            
+    def determine_SOIs(self):
+        ''' This runs every step, determing what SOI each body is in
+        '''
+        soi_names = [body.name for body in self.SOIs.keys()]
+        
+        for body in self.master_bodies_list:
+            if body.name == soi_names[0]:
+                continue
+            body.soi = list(self.SOIs.keys())[0]
+            
+            for other_body in self.SOIs.keys():
+                if body.name == other_body.name:
+                    #break since you can't be in the SOI of a less massive body
+                    break
+                
+                distance = np.linalg.norm(other_body.position - body.position)
+                
+                if self.SOIs[other_body] > distance:
+                    body.soi = other_body 
+    
+    
+    ''' MAIN LOOP
+    '''
     
     def run(self):
         
@@ -267,8 +332,6 @@ class sim():
         print("Simulation Finished")
         end = perf_counter()
         print(f"Time to run simulation was {(end-start):.2f} seconds")
-
+        
+        self.plot()
         self.create_animation()
-
-    def plot(self):
-        display.plot(self.master_bodies_list)
