@@ -17,27 +17,36 @@ class sim():
         
         self.time_values = [0]
     
+    
     def return_direction_vectors(self, subject, soi):
         ''' Returns the prograde, radial and normal vectors of an orbiting body (subject)
         '''
                 
-        relative_position = subject.position - soi.position + 0.000000001*np.ones(3)
-        relative_velocity = subject.velocity - soi.velocity + 0.000000001*np.ones(3)
+        relative_position = subject.position - soi.position
+        relative_velocity = subject.velocity - soi.velocity
+        
         speed = np.linalg.norm(relative_velocity)
         
         #calculating the three directions
-        prograde_vector = relative_velocity/speed
-        normal_vector = np.cross(relative_position, prograde_vector)/np.linalg.norm(np.cross(relative_position, prograde_vector))
-        radial_vector = np.cross(prograde_vector, normal_vector)/np.linalg.norm(np.cross(prograde_vector, normal_vector))
+        if speed == 0:
+            normal_vector = np.array([0,0,1])
+            prograde_vector = np.cross(normal_vector, relative_position)/np.linalg.norm(np.cross(normal_vector, relative_position))
+            radial_vector = relative_position/np.linalg.norm(relative_position)
+        else:
+            prograde_vector = relative_velocity/speed
+            normal_vector = np.cross(relative_position, prograde_vector)/np.linalg.norm(np.cross(relative_position, prograde_vector))
+            radial_vector = np.cross(prograde_vector, normal_vector)/np.linalg.norm(np.cross(prograde_vector, normal_vector)) #NOT ACTUAL RADIAL VECTOR
 
         return prograde_vector, radial_vector, normal_vector
 
     
+
     ''' SIMULATION INITIALISATION
     '''
     def open_config_file(self, name):
         with open(f'{name}.yaml', 'r') as file:
             return yaml.safe_load(file)
+    
     
     def generate_frame(self):
         frame_data = self.params["FRAME"]
@@ -104,6 +113,7 @@ class sim():
         else:
             print("ERROR: Unrecognised reference frame")
         
+        
     def create_master_bodies_list(self):
         ''' Generate list of active bodies from the config file
         '''
@@ -136,12 +146,15 @@ class sim():
 
     
     def configure_body_velocities(self):
+        ''' Function that reads velocities from config file and translates them to x-y-z
+        '''
         body_data = self.params['BODIES']
 
         if not body_data:      
             return
     
         for body_input in body_data:
+            print(body_input['name'])
             body = [i for i in self.master_bodies_list if i.name == body_input['name']][0]
 
             if body_input['velocity_input_mode'] == 'cartesian':
@@ -155,7 +168,10 @@ class sim():
                 soi = body.soi
                 
                 prograde_vector, radial_vector, normal_vector = self.return_direction_vectors(body, soi)
-                velocity = prograde_vector * tangential_speed * np.cos(inclination_angle) + radial_vector * radial_speed + normal_vector * tangential_speed * np.sin(inclination_angle)
+                
+                velocity = prograde_vector * tangential_speed * np.cos(inclination_angle) 
+                + radial_vector * radial_speed
+                + normal_vector * tangential_speed * np.sin(inclination_angle)
                 
             else:
                 print(f"ERROR: Invalid input for 'vel_input_mode' for the body {body_input.name}")
@@ -173,6 +189,7 @@ class sim():
             return [],[]
         
         return sorted_maneuvers_list, maneuver_times
+    
     
     def create_SOIs(self):
         ''' Determine the size of every object's sphere of influence
@@ -205,9 +222,10 @@ class sim():
         pos_error_tol = calc_params["pos_error_tol"] #position error tolerance in m
         return beta, vel_error_tol, pos_error_tol
     
+    
+    
     ''' VISUALISATION
     '''
-    
     def create_animation(self):
         start = perf_counter()
         
@@ -236,8 +254,10 @@ class sim():
             print("Finished Animation")
             print(f"Time to generate animation was {(end-start):.2f} seconds")
 
+
     def plot(self):
         display.plot(self.master_bodies_list)
+
 
 
     ''' FUNCTIONS RUN DURING MAIN LOOP
@@ -264,9 +284,11 @@ class sim():
         
         subject.velocity += delta_v[0] * prograde_vector + delta_v[1] * radial_vector + delta_v[2] * normal_vector
     
+    
     def update_bodies(self):
         for body in self.master_bodies_list:
             body.update()
+        
             
     def determine_SOIs(self):
         ''' This runs every step, determing what SOI each body is in
@@ -289,9 +311,9 @@ class sim():
                     body.soi = other_body 
     
     
+    
     ''' MAIN LOOP
     '''
-    
     def run(self):
         
         #should probably initialise in __init__??
@@ -333,5 +355,4 @@ class sim():
         end = perf_counter()
         print(f"Time to run simulation was {(end-start):.2f} seconds")
         
-        self.plot()
         self.create_animation()

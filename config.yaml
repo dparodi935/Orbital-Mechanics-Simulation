@@ -54,7 +54,7 @@ BODIES:
 
 
 MANEUVERS:    
-  - satellite_name: Satellite
-    maneuver_name: "Burn 1"
-    delta_v: [750,0,000] #Prograde, 'radial', normal
-    time: 9000
+#  - satellite_name: Satellite
+#    maneuver_name: "Burn 1"
+#    delta_v: [750,0,000] #Prograde, 'radial', normal
+#    time: 9000

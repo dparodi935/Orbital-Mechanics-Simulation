@@ -272,9 +272,10 @@ def update_frame_2D(frame, sim_data=None):
             continue
         
         #Calculate and plot the trajectory
-        orbital_trajectory = return_position_values_of_orbit(bodies_list, pos_data, vel_data, soi, frame, i)
+        if frame > 0: 
+            orbital_trajectory = return_position_values_of_orbit(bodies_list, pos_data, vel_data, soi, frame, i)
                 
-        lines[i].set_data(*orbital_trajectory[:,:2].T)  
+            lines[i].set_data(*orbital_trajectory[:,:2].T)  
         
    
     return characters + lines + [timer]
@@ -388,9 +389,11 @@ def update_matp_frame_3D(frame, sim_data=None):
             continue
                 
         # Calculate and plot the trajectory
-        orbital_trajectory = return_position_values_of_orbit(bodies_list, pos_data, vel_data, soi, frame, i)
-        trajectory_lines[i].set_data(*orbital_trajectory[:,:2].T)  
-        trajectory_lines[i].set_3d_properties(orbital_trajectory[:,2].T)
+        if frame>0: 
+            orbital_trajectory = return_position_values_of_orbit(bodies_list, pos_data, vel_data, soi, frame, i)
+       
+            trajectory_lines[i].set_data(*orbital_trajectory[:,:2].T)  
+            trajectory_lines[i].set_3d_properties(orbital_trajectory[:,2].T)
         
         #draws projecction lines
         lines[i].set_data([x_value,x_value], [y_value,y_value])
