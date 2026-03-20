@@ -47,10 +47,11 @@ BODIES:
     mass: 1e+3
     radius: 1
     color: red
-    initial_pos: [400000,0,0] #give in altitude (above the body its orbiting)
-    velocity_input_mode: cylindrical_polar #'cartesian' or 'cylindrical_polar'
+    position_input_mode: cylindrical_polar # 'cartesian' or 'cylindrical_polar'
+    initial_pos: [400000,1.65,0] # give in altitude (above the body its orbiting)
+    velocity_input_mode: cylindrical_polar # 'cartesian' or 'cylindrical_polar'
     initial_vel: [0,+9.5e+3,0] # radial speed, tangential speed, z_speed
-    #initial_vel: [0,+8.5e+3,0] #x,y,z
+    #initial_vel: [0,+8.5e+3,0] # x,y,z
 
 
 MANEUVERS:    

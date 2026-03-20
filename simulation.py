@@ -28,16 +28,16 @@ class sim():
         
         speed = np.linalg.norm(relative_velocity)
         
-        if coord_system == 'vnc':
+        if coord_system.lower() == 'vnc':
             velocity_dir_vector = relative_velocity/speed
             normal_vector = np.cross(relative_position, velocity_dir_vector)/np.linalg.norm(np.cross(relative_position, velocity_dir_vector))
             cross_track_vector = np.cross(velocity_dir_vector, normal_vector)/np.linalg.norm(np.cross(velocity_dir_vector, normal_vector))
-        elif coord_system == 'cylindrical':
+        elif coord_system.lower() == 'cylindrical':
             normal_vector = np.array([0,0,1])
             velocity_dir_vector = np.cross(normal_vector, relative_position)/np.linalg.norm(np.cross(normal_vector, relative_position))
             cross_track_vector = relative_position/np.linalg.norm(relative_position)
         else:
-            print("ERROR: Enter valid coordinate system for satellite vectors")
+            print(f"ERROR: Invalid coordinate system '{coord_system}' for satellite vectors was used")
             
         return velocity_dir_vector, cross_track_vector, normal_vector
 
@@ -116,6 +116,23 @@ class sim():
             print("ERROR: Unrecognised reference frame")
         
         
+    def configure_body_position(self, body, central_radius, coord_system='cartesian'):
+        position_input = np.array([float(item) for item in body['initial_pos']])
+        
+        if coord_system.lower() == 'cartesian':
+            position = position_input
+        elif coord_system.lower() == 'cylindrical_polar':
+            r, phi, z = position_input
+            x = r * np.cos(phi)
+            y = r * np.sin(phi)
+            position = np.array([x,y,z])
+        else:
+            print(f"ERROR: Invalid coordinate system '{coord_system}' for satellite position was input")
+            return None
+        
+        position += central_radius * position/np.linalg.norm(position) 
+        return position
+            
     def create_master_bodies_list(self):
         ''' Generate list of active bodies from the config file
         '''
@@ -134,13 +151,12 @@ class sim():
             mass = float(body['mass'])
             radius =  float(body['radius'])
             colour = body['color']
-
-            position = np.array([float(item) for item in body['initial_pos']] )
-            position += central_radius * position/np.linalg.norm(position) 
+            position_input_mode = body['position_input_mode']
+            name = body['name']
+            
+            position = self.configure_body_position(body, central_radius, coord_system=position_input_mode)
                                 
             dummy_velocity = np.zeros(3)
-            
-            name = body['name']
             
             master_bodies_list.append(bodies.body(mass, radius, position, dummy_velocity, name, colour))
         
