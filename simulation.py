@@ -70,10 +70,8 @@ class sim():
             initial_pos = [0,4e+8,0]
             initial_vel = [-0.97e+3,0,0]
             moon_data = [mass, radius, initial_pos, initial_vel, name, colour]
-            
-            central_radius = 6.3e+6
-            
-            return [earth_data, moon_data], central_radius 
+                        
+            return [earth_data, moon_data] 
         
         elif frame == "earth":
             #Earth
@@ -82,10 +80,8 @@ class sim():
             initial_pos = [0,0,0]
             initial_vel = [0,0,0]
             earth_data = [mass, radius, initial_pos, initial_vel, name, colour]
-            
-            central_radius = 6.3e+6
-            
-            return [earth_data], central_radius
+                        
+            return [earth_data]
         
         elif frame == "sol":
             #Sun
@@ -108,19 +104,19 @@ class sim():
             initial_pos = [1.4960e+11,4e+8,0]
             initial_vel = [-0.97e+3,29.783e+3,0]
             moon_data = [mass, radius, initial_pos, initial_vel, name, colour]
-            
-            central_radius = 6.3e+6
-            
-            return [sun_data, earth_data, moon_data], central_radius 
+                        
+            return [sun_data, earth_data, moon_data] 
         else:
             print("ERROR: Unrecognised reference frame")
         
         
-    def configure_body_position(self, body, central_radius, coord_system='cartesian'):
-        position_input = np.array([float(item) for item in body['initial_pos']])
+    def configure_body_position(self, body, frame_bodies_list):
+        coord_system = body['position_input_mode']
+        coord_origin_body_name = body['coord_origin']
+        position_input = [float(item) for item in body['initial_pos']]
         
         if coord_system.lower() == 'cartesian':
-            position = position_input
+            position = np.array(position_input)
         elif coord_system.lower() == 'cylindrical_polar':
             r, phi, z = position_input
             x = r * np.cos(phi)
@@ -130,7 +126,16 @@ class sim():
             print(f"ERROR: Invalid coordinate system '{coord_system}' for satellite position was input")
             return None
         
-        position += central_radius * position/np.linalg.norm(position) 
+        #get details of host body
+        if coord_origin_body_name.lower() == 'none':
+            coord_origin_body = frame_bodies_list[0]
+        else:
+            coord_origin_body = [i for i in frame_bodies_list if i.name.lower() == coord_origin_body_name.lower()][0]
+        
+        origin = coord_origin_body.position 
+        host_radius = coord_origin_body.radius
+        
+        position += origin + host_radius * position/np.linalg.norm(position) 
         return position
             
     def create_master_bodies_list(self):
@@ -139,10 +144,10 @@ class sim():
         body_data = self.params['BODIES']
         master_bodies_list = []
         
-        frame_bodies, central_radius = self.generate_frame() 
+        frame_bodies = self.generate_frame() 
         
         for body in frame_bodies:
-            master_bodies_list.append(bodies.body(*body))
+            master_bodies_list.append(bodies.body(*body, preset=True))
         
         if not body_data: 
             return master_bodies_list
@@ -151,10 +156,9 @@ class sim():
             mass = float(body['mass'])
             radius =  float(body['radius'])
             colour = body['color']
-            position_input_mode = body['position_input_mode']
             name = body['name']
             
-            position = self.configure_body_position(body, central_radius, coord_system=position_input_mode)
+            position = self.configure_body_position(body, master_bodies_list)
                                 
             dummy_velocity = np.zeros(3)
             
@@ -172,7 +176,7 @@ class sim():
             return
     
         for body_input in body_data:
-            body = [i for i in self.master_bodies_list if i.name == body_input['name']][0]
+            body = [i for i in self.master_bodies_list if i.name.lower() == body_input['name'].lower()][0]
 
 
             if body_input['velocity_input_mode'] == 'cartesian':

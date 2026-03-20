@@ -3,13 +3,14 @@ from scipy.interpolate import interp1d
 
 class body():
     
-    def __init__(self, mass, radius, position, velocity, name, colour):
+    def __init__(self, mass, radius, position, velocity, name, colour, preset=False):
         self.name = name
         self.mass = mass
         self.radius = radius
         self.position = np.array(position, dtype=float)
         self.velocity = np.array(velocity, dtype=float)
         self.colour = colour
+        self.preset = preset
         
         self.soi = None # body that this instance is in the sphere of influence of 
         self.delta_x = np.zeros(3)    
