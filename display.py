@@ -4,6 +4,8 @@ from functools import partial
 import calculations 
 import constants
 import numpy as np
+from matplotlib.patches import Circle
+from matplotlib.collections import PatchCollection
 
 import matplotlib
 matplotlib.use('Qt5Agg') 
@@ -131,6 +133,8 @@ def append_interpolated_body_data(body, vel_data, soi_data, simulation_time_data
     pos_data.append(interpolated_position_history)
     vel_data.append(interpolated_velocity_history)
     soi_data.append(interpolated_soi_history)
+    
+    return pos_data, soi_data, vel_data
 
 
 def draw_3D_background(ax, reference_frame, display_half_width):
@@ -218,17 +222,24 @@ def init_2D(master_bodies_list, simulation_time_data, reference_frame):
     
     
     for i, body in enumerate(master_bodies_list):
-        factor = 262.196/display_half_width
-        markersize = max(body.radius*factor, 5)
         colour = return_body_colour(body)
-        style = f"{colour}o"
         
-        #set up objects for body and its trajectory line
-        characters.append(ax.plot([],[], style, markersize=markersize)[0])
+        if body.preset:
+            c = plt.Circle([0,0], body.radius, color=colour)
+            
+            ax.add_patch(c)
+            characters.append(c)
+        else:
+            markersize = 4 
+            style = f"{colour}o"
+            
+            #set up objects for body and its trajectory line
+            characters.append(ax.plot([],[], style, markersize=markersize)[0])
+        
         lines.append(ax.plot([],[], colour, lw=0.5)[0])
-        
+            
         #interpolate body's data
-        append_interpolated_body_data(body, vel_data, soi_data, simulation_time_data, animation_time_data, pos_data)
+        pos_data, soi_data, vel_data = append_interpolated_body_data(body, vel_data, soi_data, simulation_time_data, animation_time_data, pos_data)
     
     sim_data = {
     "characters": characters,
@@ -260,17 +271,20 @@ def update_frame_2D(frame, sim_data=None):
     time = display_time(animation_time_data[frame])
     timer.set_text(time)
     
-    for i in range(len(pos_data)): 
+    for i in range(len(characters)): 
         #draw body
-        x_values = pos_data[i][frame][0]
-        y_values = pos_data[i][frame][1]
-        characters[i].set_data([x_values], [y_values])
-        
+        if bodies_list[i].preset:
+            characters[i].set_center(pos_data[i][frame])
+        else:
+            x_values = pos_data[i][frame][0]
+            y_values = pos_data[i][frame][1]
+            characters[i].set_data([x_values], [y_values])
+            
         #find the sphere of influence
         soi = return_soi(soi_data, frame, i)
         if not soi:
             continue
-        
+            
         #Calculate and plot the trajectory
         if frame > 0: 
             orbital_trajectory = return_position_values_of_orbit(bodies_list, pos_data, vel_data, soi, frame, i)
