@@ -48,13 +48,13 @@ BODIES:
     radius: 1
     color: red
     initial_pos: [400000,0,0] #give in altitude (above the body its orbiting)
-    velocity_input_mode: polar #'cartesian' or 'polar'
-    initial_vel: [+8.5e+3,0,500] # tangential speed, inclination, radial speed
+    velocity_input_mode: cylindrical_polar #'cartesian' or 'cylindrical_polar'
+    initial_vel: [0,+9.5e+3,0] # radial speed, tangential speed, z_speed
     #initial_vel: [0,+8.5e+3,0] #x,y,z
 
 
 MANEUVERS:    
-#  - satellite_name: Satellite
-#    maneuver_name: "Burn 1"
-#    delta_v: [750,0,000] #Prograde, 'radial', normal
-#    time: 9000
+  - satellite_name: Satellite
+    maneuver_name: "Burn 1"
+    delta_v: [750,0,000] #Prograde, 'radial', normal
+    time: 9000

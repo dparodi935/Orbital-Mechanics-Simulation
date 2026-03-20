@@ -18,8 +18,9 @@ class sim():
         self.time_values = [0]
     
     
-    def return_direction_vectors(self, subject, soi):
-        ''' Returns the prograde, radial and normal vectors of an orbiting body (subject)
+    def return_direction_vectors(self, subject, soi, coord_system='vnc'):
+        ''' Returns the velocity, normal and cross-track vectors of an orbiting body (subject)
+            VNC Frame (for now)
         '''
                 
         relative_position = subject.position - soi.position
@@ -27,17 +28,18 @@ class sim():
         
         speed = np.linalg.norm(relative_velocity)
         
-        #calculating the three directions
-        if speed == 0:
+        if coord_system == 'vnc':
+            velocity_dir_vector = relative_velocity/speed
+            normal_vector = np.cross(relative_position, velocity_dir_vector)/np.linalg.norm(np.cross(relative_position, velocity_dir_vector))
+            cross_track_vector = np.cross(velocity_dir_vector, normal_vector)/np.linalg.norm(np.cross(velocity_dir_vector, normal_vector))
+        elif coord_system == 'cylindrical':
             normal_vector = np.array([0,0,1])
-            prograde_vector = np.cross(normal_vector, relative_position)/np.linalg.norm(np.cross(normal_vector, relative_position))
-            radial_vector = relative_position/np.linalg.norm(relative_position)
+            velocity_dir_vector = np.cross(normal_vector, relative_position)/np.linalg.norm(np.cross(normal_vector, relative_position))
+            cross_track_vector = relative_position/np.linalg.norm(relative_position)
         else:
-            prograde_vector = relative_velocity/speed
-            normal_vector = np.cross(relative_position, prograde_vector)/np.linalg.norm(np.cross(relative_position, prograde_vector))
-            radial_vector = np.cross(prograde_vector, normal_vector)/np.linalg.norm(np.cross(prograde_vector, normal_vector)) #NOT ACTUAL RADIAL VECTOR
-
-        return prograde_vector, radial_vector, normal_vector
+            print("ERROR: Enter valid coordinate system for satellite vectors")
+            
+        return velocity_dir_vector, cross_track_vector, normal_vector
 
     
 
@@ -154,24 +156,24 @@ class sim():
             return
     
         for body_input in body_data:
-            print(body_input['name'])
             body = [i for i in self.master_bodies_list if i.name == body_input['name']][0]
+
 
             if body_input['velocity_input_mode'] == 'cartesian':
                 velocity = [float(item) for item in body_input['initial_vel']]
             
-            elif body_input['velocity_input_mode'] == 'polar': #CHANGE NAME FROM POLAR
-                tangential_speed = float(body_input['initial_vel'][0])
-                inclination_angle = float(body_input['initial_vel'][1])
-                radial_speed = float(body_input['initial_vel'][2])
+            elif body_input['velocity_input_mode'] == 'cylindrical_polar': 
+                radial_speed = float(body_input['initial_vel'][0])
+                tangential_speed = float(body_input['initial_vel'][1])
+                z_speed = float(body_input['initial_vel'][2])
                 
                 soi = body.soi
                 
-                prograde_vector, radial_vector, normal_vector = self.return_direction_vectors(body, soi)
+                velocity_dir_vector, cross_track_vector, normal_vector = self.return_direction_vectors(body, soi, coord_system='cylindrical')
                 
-                velocity = prograde_vector * tangential_speed * np.cos(inclination_angle) 
-                + radial_vector * radial_speed
-                + normal_vector * tangential_speed * np.sin(inclination_angle)
+                velocity = velocity_dir_vector * tangential_speed 
+                + cross_track_vector * radial_speed
+                + normal_vector * z_speed
                 
             else:
                 print(f"ERROR: Invalid input for 'vel_input_mode' for the body {body_input.name}")
@@ -182,7 +184,7 @@ class sim():
     def create_maneuver_list(self):
         maneuvers_data = self.params['MANEUVERS']
         
-        if maneuvers_data :
+        if maneuvers_data:
             sorted_maneuvers_list = sorted(maneuvers_data , key=lambda d:d['time'])
             maneuver_times = [item['time'] for item in sorted_maneuvers_list]
         else: 
@@ -277,12 +279,13 @@ class sim():
             return
         else:
             print(f"Executing Maneuver '{maneuver_name}'")
+            
         subject = subject[0]
         soi = subject.soi
         
-        prograde_vector, radial_vector, normal_vector = self.return_direction_vectors(subject, soi)
+        velocity_dir_vector, cross_track_vector, normal_vector = self.return_direction_vectors(subject, soi, coord_system='vnc')
         
-        subject.velocity += delta_v[0] * prograde_vector + delta_v[1] * radial_vector + delta_v[2] * normal_vector
+        subject.velocity += delta_v[0] * velocity_dir_vector + delta_v[1] * cross_track_vector + delta_v[2] * normal_vector
     
     
     def update_bodies(self):
