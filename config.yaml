@@ -18,7 +18,7 @@ ANIMATION_PARAMS:
   save_folder: "C:/Users/dp271/Downloads"
   filename: "gravity_sim"
   
-# Presets: earth, satellite, None
+# Presets: earth
 # DON'T EDIT
 PRESET_BODIES:
   - preset: sun
