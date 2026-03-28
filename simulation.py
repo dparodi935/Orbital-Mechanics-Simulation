@@ -12,6 +12,7 @@ class sim():
         self.master_bodies_list = self.create_master_bodies_list()
         self.SOIs = self.create_SOIs()
         self.maneuvers_list, self.maneuver_times = self.create_maneuver_list()
+        self.debug_mode = self.params["SIMULATION_PARAMS"]["debug_mode"]
         
         self.determine_SOIs()
         self.configure_body_velocities()
@@ -128,8 +129,6 @@ class sim():
                 
                 a = np.linalg.norm(body2.position-body1.position)
                 omega = np.sqrt(constants.G * body1.mass/(a**3))
-                print(body2.velocity[0]/a)
-                print(omega)
                 speed = omega * np.linalg.norm(l_correction)
                 
                 y_dir = np.cross([0,0,1],l_correction)
@@ -163,6 +162,7 @@ class sim():
         #get details of host body
         coord_origin_entries = coord_origin.split(",")
         coord_origin_body_name = coord_origin_entries[0].replace(" ","")
+        
         if coord_origin_body_name.lower() == 'none':
             coord_origin_body = frame_bodies_list[0]
         else:
@@ -173,9 +173,12 @@ class sim():
         correction, vel_correction = self.calculate_lagrange_point(coord_origin_entries, frame_bodies_list)
         origin = origin + correction
         
-        host_radius = coord_origin_body.radius
-        
-        position += origin + host_radius * position/np.linalg.norm(position) 
+        if not correction.any():
+            #unless centred on a lagrange point, add correction since input is altitute 
+            host_radius = coord_origin_body.radius
+            position += host_radius * position/np.linalg.norm(position) 
+            
+        position += origin
         return position, vel_correction
             
     
@@ -419,5 +422,5 @@ class sim():
         end = perf_counter()
         print(f"Time to run simulation was {(end-start):.2f} seconds")
         
-        #self.plot()
         self.create_animation()
+        if self.debug_mode: self.plot()

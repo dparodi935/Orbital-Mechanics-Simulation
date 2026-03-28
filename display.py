@@ -1,5 +1,6 @@
 import matplotlib
 matplotlib.use('Qt5Agg') 
+
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from functools import partial
@@ -435,8 +436,13 @@ def create_3D_matp_animation(master_bodies_list, simulation_time_data, reference
 #%% Static 2D Plot
     
 def plot(master_bodies_list):
+    matplotlib.use('module://matplotlib_inline.backend_inline')
     fig_2dplot, ax_2dplot = plt.subplots()
     for body in master_bodies_list:
-        ax_2dplot.scatter(np.array(body.position_history)[:,0], np.array(body.position_history)[:, 1],s=0.01)
+        #ax_2dplot.scatter(np.array(body.position_history)[:,0], np.array(body.position_history)[:, 1],s=0.01)
+        ax_2dplot.plot(np.array(body.position_history)[:,0], np.array(body.position_history)[:, 1])
+        
+    ax_2dplot.set_aspect('equal', adjustable='box')    
     plt.show()
+    plt.close()
 

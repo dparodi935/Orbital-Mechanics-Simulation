@@ -1,8 +1,9 @@
 # config.yaml
 
 SIMULATION_PARAMS:
-    duration: 10 #days
+    duration: 150 #days
     initial_dt: 1
+    debug_mode: true # true or false
 
 CALCULATION_PARAMS:
     beta: 0.8 #0.8 or 0.9
@@ -11,7 +12,7 @@ CALCULATION_PARAMS:
    
 #set either save_animation OR live_display to "True" to generate animation. Currently the specific setting only affects 2D
 ANIMATION_PARAMS:
-  mode: saved #'saved' or 'interactive' or 'none'
+  mode: interactive #'saved' or 'interactive' or 'none'
   dimensions: 2D #2D, 3D
   dpi: 200
   framerate: 35
@@ -48,11 +49,10 @@ BODIES:
     radius: 1
     color: red
     position_input_mode: cartesian # 'cartesian' or 'cylindrical_polar'
-    initial_pos: [0,0.0001,0] #[400000,0,0] # given in altitude (above the body its orbiting)
-    coord_origin: earth, L1 # Format: host_body_name[body2_name, LX]
+    initial_pos: [0,0.1,0] #[400000,0,0] # given in altitude (above the body its orbiting)
+    coord_origin: earth, L4 # Format: host_body_name[body2_name, LX]
     velocity_input_mode: cylindrical_polar # 'cartesian' or 'cylindrical_polar'
     initial_vel: [0,0,0] #[0,+9.5e+3,0] # radial speed, tangential speed, z_speed
-    #initial_vel: [0,+8.5e+3,0] # x,y,z
 
 
 MANEUVERS:    
