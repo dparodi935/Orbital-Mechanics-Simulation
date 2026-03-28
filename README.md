@@ -4,6 +4,7 @@ Gravity simulation designed for spacecraft orbital mechanics
 Features: 
 - Runge-Kutta-Fehlberg Integrator
 - Execute maneuvers
+- Calculates Lagrange point positions 
 - Create both 2D and 3D animations
 
 Note: There are still some rendering issues for the 3D animations
