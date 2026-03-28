@@ -1,7 +1,8 @@
-import calculations, display, bodies
+import calculations, display, bodies, constants
 import yaml
 import numpy as np
 from time import perf_counter
+import lagrangepoints as lagrange
 
 class sim():
     
@@ -68,7 +69,8 @@ class sim():
             config_data = next((data for data in preset_data if data['preset']=="moon"),None)
             name, mass, radius, colour = "Moon", float(config_data['mass']), float(config_data['radius']), config_data['color']
             initial_pos = [0,4e+8,0]
-            initial_vel = [-0.97e+3,0,0]
+            vel = np.sqrt(constants.G*earth_data[0]/np.linalg.norm(initial_pos))
+            initial_vel = [-vel,0,0]
             moon_data = [mass, radius, initial_pos, initial_vel, name, colour]
                         
             return [earth_data, moon_data] 
@@ -109,10 +111,42 @@ class sim():
         else:
             print("ERROR: Unrecognised reference frame")
         
+    
+    def calculate_lagrange_point(self, coord_origin_entries, frame_bodies_list):
+        if len(coord_origin_entries) == 2:
+            if len(frame_bodies_list) == 1:
+                print("ERROR: Lagrange points require two bodies in the frame")
+                return np.zeros(3),np.zeros(3)
+            
+            entry_two = coord_origin_entries[1].replace(" ","")
+            if entry_two.lower()  in ['l1','l2','l3','l4','l5']:
+                body1 = frame_bodies_list[0]
+                body2 = frame_bodies_list[1]
+                lagrange_point_coords = lagrange.return_L_points(body1,body2)
+                
+                l_correction = lagrange_point_coords[int(entry_two[1])-1]
+                
+                a = np.linalg.norm(body2.position-body1.position)
+                omega = np.sqrt(constants.G * body1.mass/(a**3))
+                print(body2.velocity[0]/a)
+                print(omega)
+                speed = omega * np.linalg.norm(l_correction)
+                
+                y_dir = np.cross([0,0,1],l_correction)
+                y_dir = y_dir/np.linalg.norm(y_dir)
+                vel_correction = y_dir * speed
+                print(np.linalg.norm(vel_correction))
+                return l_correction, vel_correction
+                
+            else:    
+                print("ERROR: Entry after 2nd comma for 'coord_origin' must be of form Lx, where x is 1-5")
+                return np.zeros(3),np.zeros(3)
+        else:
+            return np.zeros(3),np.zeros(3)
         
     def configure_body_position(self, body, frame_bodies_list):
         coord_system = body['position_input_mode']
-        coord_origin_body_name = body['coord_origin']
+        coord_origin = body['coord_origin']
         position_input = [float(item) for item in body['initial_pos']]
         
         if coord_system.lower() == 'cartesian':
@@ -127,17 +161,24 @@ class sim():
             return None
         
         #get details of host body
+        coord_origin_entries = coord_origin.split(",")
+        coord_origin_body_name = coord_origin_entries[0].replace(" ","")
         if coord_origin_body_name.lower() == 'none':
             coord_origin_body = frame_bodies_list[0]
         else:
             coord_origin_body = [i for i in frame_bodies_list if i.name.lower() == coord_origin_body_name.lower()][0]
-        
+       
         origin = coord_origin_body.position 
+        
+        correction, vel_correction = self.calculate_lagrange_point(coord_origin_entries, frame_bodies_list)
+        origin = origin + correction
+        
         host_radius = coord_origin_body.radius
         
         position += origin + host_radius * position/np.linalg.norm(position) 
-        return position
+        return position, vel_correction
             
+    
     def create_master_bodies_list(self):
         ''' Generate list of active bodies from the config file
         '''
@@ -158,11 +199,11 @@ class sim():
             colour = body['color']
             name = body['name']
             
-            position = self.configure_body_position(body, master_bodies_list)
+            position, vel_correction = self.configure_body_position(body, master_bodies_list)
                                 
             dummy_velocity = np.zeros(3)
             
-            master_bodies_list.append(bodies.body(mass, radius, position, dummy_velocity, name, colour))
+            master_bodies_list.append(bodies.body(mass, radius, position, vel_correction, name, colour))
         
         return master_bodies_list
 
@@ -198,7 +239,7 @@ class sim():
             else:
                 print(f"ERROR: Invalid input for 'vel_input_mode' for the body {body_input.name}")
                 
-            body.velocity = velocity
+            body.velocity = body.velocity + velocity
 
     
     def create_maneuver_list(self):
@@ -347,7 +388,7 @@ class sim():
         duration_seconds = float(duration)*24*60*60
         time = 0
         calculations.initialise(self.master_bodies_list)
-        
+
         print("Simulation Loop Starting")
         start = perf_counter()
         while time < duration_seconds: 
@@ -378,4 +419,5 @@ class sim():
         end = perf_counter()
         print(f"Time to run simulation was {(end-start):.2f} seconds")
         
+        #self.plot()
         self.create_animation()

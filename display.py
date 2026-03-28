@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Qt5Agg') 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from functools import partial
@@ -7,8 +9,6 @@ import numpy as np
 from matplotlib.patches import Circle
 from matplotlib.collections import PatchCollection
 
-import matplotlib
-matplotlib.use('Qt5Agg') 
 
 #%%
 def positions_from_orbital_parameters(r0, e_vector, normal, theta_correction, soi_position):

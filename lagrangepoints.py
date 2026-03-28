@@ -33,4 +33,15 @@ def return_L_points(body1,body2):
     L4y = a*np.sqrt(3)/2
     L5y = -a*np.sqrt(3)/2
     
-    return np.array([L1x,0],[L2x,0],[L3x,0],[L45x,L4y],[L45x,L5y])
+    L_point_coords = [[L1x,0],[L2x,0],[L3x,0],[L45x,L4y],[L45x,L5y]]
+    
+    x_dir = (body2.position - body1.position)/a
+    y_dir = np.cross([0,0,1],x_dir)
+    y_dir = y_dir/np.linalg.norm(y_dir)
+    
+    L_points_coords_transformed = []
+    for point in L_point_coords:
+        L_points_coords_transformed.append(x_dir * point[0] + y_dir * point[1])
+    
+    print(L_points_coords_transformed)
+    return L_points_coords_transformed

@@ -1,7 +1,7 @@
 # config.yaml
 
 SIMULATION_PARAMS:
-    duration: 0.6 #days
+    duration: 10 #days
     initial_dt: 1
 
 CALCULATION_PARAMS:
@@ -39,7 +39,7 @@ PRESET_BODIES:
 #Select the environment the simulation takes place in    
 # Frames: cislunar, earth, sol 
 FRAME:
-    frame: earth
+    frame: cislunar
 
 #Specify 
 BODIES:
@@ -47,16 +47,16 @@ BODIES:
     mass: 1e+3
     radius: 1
     color: red
-    position_input_mode: cylindrical_polar # 'cartesian' or 'cylindrical_polar'
-    initial_pos: [400000,0,0] # given in altitude (above the body its orbiting)
-    coord_origin: earth # Format: host_body_name[body2_name, LX]
+    position_input_mode: cartesian # 'cartesian' or 'cylindrical_polar'
+    initial_pos: [0,0.0001,0] #[400000,0,0] # given in altitude (above the body its orbiting)
+    coord_origin: earth, L1 # Format: host_body_name[body2_name, LX]
     velocity_input_mode: cylindrical_polar # 'cartesian' or 'cylindrical_polar'
-    initial_vel: [0,+9.5e+3,0] # radial speed, tangential speed, z_speed
+    initial_vel: [0,0,0] #[0,+9.5e+3,0] # radial speed, tangential speed, z_speed
     #initial_vel: [0,+8.5e+3,0] # x,y,z
 
 
 MANEUVERS:    
-  - satellite_name: Satellite
-    maneuver_name: "Burn 1"
-    delta_v: [750,0,000] #Prograde, 'radial', normal
-    time: 9000
+#  - satellite_name: Satellite
+#    maneuver_name: "Burn 1"
+#    delta_v: [750,0,000] #Prograde, 'radial', normal
+#    time: 9000
