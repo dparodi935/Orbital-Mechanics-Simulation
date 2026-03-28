@@ -35,6 +35,8 @@ def return_L_points(body1,body2):
     
     L_point_coords = [[L1x,0],[L2x,0],[L3x,0],[L45x,L4y],[L45x,L5y]]
     
+    
+    #transforms to the frame with origin at body 1 whose x axis joins the bodies
     x_dir = (body2.position - body1.position)/a
     y_dir = np.cross([0,0,1],x_dir)
     y_dir = y_dir/np.linalg.norm(y_dir)
@@ -43,5 +45,4 @@ def return_L_points(body1,body2):
     for point in L_point_coords:
         L_points_coords_transformed.append(x_dir * point[0] + y_dir * point[1])
     
-    print(L_points_coords_transformed)
     return L_points_coords_transformed

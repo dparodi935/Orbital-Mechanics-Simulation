@@ -1,0 +1,62 @@
+# config.yaml
+
+SIMULATION_PARAMS:
+    duration: 150 #days
+    initial_dt: 1
+    debug_mode: true # true or false
+
+CALCULATION_PARAMS:
+    beta: 0.8 #0.8 or 0.9
+    vel_error_tol: 0.0000001 #velocity error tolerance in m/s
+    pos_error_tol: 0.0000001 #position error tolerance in m
+   
+#set either save_animation OR live_display to "True" to generate animation. Currently the specific setting only affects 2D
+ANIMATION_PARAMS:
+  mode: interactive #'saved' or 'interactive' or 'none'
+  dimensions: 2D #2D, 3D
+  dpi: 200
+  framerate: 35
+  save_folder: "C:/Users/dp271/Downloads"
+  filename: "gravity_sim"
+  
+# Presets: earth
+# DON'T EDIT
+PRESET_BODIES:
+  - preset: sun
+    mass: 1.989e+30
+    radius: 6.957e+8
+    color: yellow
+    
+  - preset: earth
+    mass: 5.972e+24
+    radius: 6.378e+6
+    color: blue
+    
+  - preset: moon
+    mass: 7.346e+22
+    radius: 1.738e+6
+    color: green
+
+#Select the environment the simulation takes place in    
+# Frames: cislunar, earth, sol 
+FRAME:
+    frame: cislunar
+
+#Specify 
+BODIES:
+  - name: Satellite
+    mass: 1e+3
+    radius: 1
+    color: red
+    position_input_mode: cartesian # 'cartesian' or 'cylindrical_polar'
+    initial_pos: [0,0.1,0] #[400000,0,0] # given in altitude (above the body its orbiting)
+    coord_origin: earth, L4 # Format: host_body_name[body2_name, LX]
+    velocity_input_mode: cylindrical_polar # 'cartesian' or 'cylindrical_polar'
+    initial_vel: [0,0,0] #[0,+9.5e+3,0] # radial speed, tangential speed, z_speed
+
+
+MANEUVERS:    
+#  - satellite_name: Satellite
+#    maneuver_name: "Burn 1"
+#    delta_v: [750,0,000] #Prograde, 'radial', normal
+#    time: 9000
