@@ -312,7 +312,7 @@ class sim():
         else:
             print("ERROR: Invalid parameter entered for animation 'mode'")
             return
-            
+        
         if dimensions == "2D":
             display.create_2D_animation(self.master_bodies_list, self.time_values, self.frame, animation_params)
         elif dimensions == "3D":
@@ -337,7 +337,7 @@ class sim():
     def execute_maneuver(self, maneuver_data):
         target_name = maneuver_data['satellite_name']
         maneuver_name = maneuver_data['maneuver_name']
-        delta_v = maneuver_data['delta_v']
+        delta_v = [float(i) for i in maneuver_data['delta_v']]
         
         subject = [body for body in self.master_bodies_list if body.name == target_name]
         if len(subject) == 0:
@@ -402,10 +402,11 @@ class sim():
         while time < duration_seconds: 
             #Check for and then execute maneuvers
             if len(incomplete_maneuver_times) > 0:
-                if np.isclose(incomplete_maneuver_times[0], time, atol=0.0001):
-                    self.execute_maneuver(incomplete_maneuvers_list[0])
-                    del incomplete_maneuvers_list[0]
-                    del incomplete_maneuver_times[0]
+                for i in range(len(incomplete_maneuver_times)):
+                    if np.isclose(incomplete_maneuver_times[0], time, atol=0.0001):
+                        self.execute_maneuver(incomplete_maneuvers_list[0])
+                        del incomplete_maneuvers_list[0]
+                        del incomplete_maneuver_times[0]
             
             #do calculations
             dt = calculations.time_step(beta, vel_error_tol, pos_error_tol, dt, self.master_bodies_list)

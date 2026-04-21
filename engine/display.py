@@ -73,7 +73,7 @@ def generate_frame_time_data(simulation_time_data, reference_frame):
     #calculate the number of frames needed and the corresponding time values
     duration = simulation_time_data[-1]
     frames_per_hour = return_frames_per_hour(reference_frame)
-
+    
     num_frames = int(duration/3600 * frames_per_hour)
     animation_time_data = np.linspace(0,duration,num=num_frames)
     

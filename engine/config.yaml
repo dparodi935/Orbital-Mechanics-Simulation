@@ -1,10 +1,10 @@
 # config.yaml
 
 SIMULATION_PARAMS:
-    duration: 150 #days
+    duration: 15 #days
     initial_dt: 1
     debug_mode: true # true or false
-
+ 
 CALCULATION_PARAMS:
     beta: 0.8 #0.8 or 0.9
     vel_error_tol: 0.0000001 #velocity error tolerance in m/s
@@ -12,12 +12,12 @@ CALCULATION_PARAMS:
    
 #set either save_animation OR live_display to "True" to generate animation. Currently the specific setting only affects 2D
 ANIMATION_PARAMS:
-  mode: interactive #'saved' or 'interactive' or 'none'
+  mode: saved #'saved' or 'interactive' or 'none'
   dimensions: 2D #2D, 3D
-  dpi: 200
+  dpi: 200  
   framerate: 35
   save_folder: "C:/Users/dp271/Downloads"
-  filename: "gravity_sim"
+  filename: "gravity_sim_tli"
   
 # Presets: earth
 # DON'T EDIT
@@ -48,15 +48,30 @@ BODIES:
     mass: 1e+3
     radius: 1
     color: red
-    position_input_mode: cartesian # 'cartesian' or 'cylindrical_polar'
-    initial_pos: [0,0.1,0] #[400000,0,0] # given in altitude (above the body its orbiting)
-    coord_origin: earth, L4 # Format: host_body_name[body2_name, LX]
+    position_input_mode: cylindrical_polar # 'cartesian' or 'cylindrical_polar'
+    initial_pos: [1.18e+6,1.5,0] # given in altitude (above the body its orbiting)
+    coord_origin: earth # Format: host_body_name[body2_name, LX]
     velocity_input_mode: cylindrical_polar # 'cartesian' or 'cylindrical_polar'
-    initial_vel: [0,0,0] #[0,+9.5e+3,0] # radial speed, tangential speed, z_speed
+    initial_vel: [0,7.260e+3,0] #[0,+9.5e+3,0] # radial speed, tangential speed, z_speed
+    
+  - name: Satellite_two
+    mass: 1e+3
+    radius: 1
+    color: black
+    position_input_mode: cylindrical_polar # 'cartesian' or 'cylindrical_polar'
+    initial_pos: [1.18e+6,5.5,0] # given in altitude (above the body its orbiting)
+    coord_origin: earth # Format: host_body_name[body2_name, LX]
+    velocity_input_mode: cylindrical_polar # 'cartesian' or 'cylindrical_polar'
+    initial_vel: [0,7.260e+3,0] #[0,+9.5e+3,0] # radial speed, tangential speed, z_speed
 
 
 MANEUVERS:    
-#  - satellite_name: Satellite
-#    maneuver_name: "Burn 1"
-#    delta_v: [750,0,000] #Prograde, 'radial', normal
-#    time: 9000
+  - satellite_name: Satellite
+    maneuver_name: "Burn 1"
+    delta_v: [2.93e+3,0,0] #[2.913e+3,0,000] #Prograde, 'radial', normal
+    time: 416
+    
+  - satellite_name: Satellite_two
+    maneuver_name: "Burn 2"
+    delta_v: [2.93e+3,0,0] #[2.913e+3,0,000] #Prograde, 'radial', normal
+    time: 416

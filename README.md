@@ -8,6 +8,10 @@ Features:
 - Create both 2D and 3D animations
 
 
+This video demonstrates how a lunar flyby can be used to significantly speed up a spacecraft's return to Earth
+![Video Demo of Simulator](https://raw.githubusercontent.com/dparodi935/Orbital-Mechanics-Simulation/main/gravity_sim_demo_2.gif)
+
+
 This video demonstrates a spacecraft in a geostationary orbit executing a burn to conduct a slingshot around the Moon:
 
 ![Video Demo of Simulator](https://raw.githubusercontent.com/dparodi935/Orbital-Mechanics-Simulation/main/gravity_sim_demo.gif)
