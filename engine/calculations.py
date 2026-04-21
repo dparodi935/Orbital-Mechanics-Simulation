@@ -14,7 +14,7 @@ def get_net_acceleration(main_body, bodies_list):
     '''
     net_acc = np.array([0,0,0],dtype=float)
     for other_body in bodies_list:
-        if other_body != main_body:
+        if other_body != main_body and other_body.mass > 1e+10:
             rel_pos_vector = other_body.temp_position - main_body.temp_position
             net_acc += gravity(rel_pos_vector, other_body.mass)
     
