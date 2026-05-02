@@ -1,7 +1,7 @@
 # config.yaml
 
 SIMULATION_PARAMS:
-    duration: 15 #days
+    duration: 12 #days
     initial_dt: 1
     debug_mode: true # true or false
  
@@ -14,7 +14,7 @@ CALCULATION_PARAMS:
 ANIMATION_PARAMS:
   mode: saved #'saved' or 'interactive' or 'none'
   dimensions: 2D #2D, 3D
-  dpi: 200  
+  dpi: 250  
   framerate: 35
   save_folder: "C:/Users/dp271/Downloads"
   filename: "gravity_sim_tli"
@@ -44,7 +44,7 @@ FRAME:
 
 #Specify 
 BODIES:
-  - name: Satellite
+  - name: Standard
     mass: 1e+3
     radius: 1
     color: red
@@ -54,7 +54,7 @@ BODIES:
     velocity_input_mode: cylindrical_polar # 'cartesian' or 'cylindrical_polar'
     initial_vel: [0,7.260e+3,0] #[0,+9.5e+3,0] # radial speed, tangential speed, z_speed
     
-  - name: Satellite_two
+  - name: Free Return
     mass: 1e+3
     radius: 1
     color: black
@@ -66,12 +66,12 @@ BODIES:
 
 
 MANEUVERS:    
-  - satellite_name: Satellite
+  - satellite_name: Standard
     maneuver_name: "Burn 1"
     delta_v: [2.93e+3,0,0] #[2.913e+3,0,000] #Prograde, 'radial', normal
     time: 416
     
-  - satellite_name: Satellite_two
+  - satellite_name: Free Return
     maneuver_name: "Burn 2"
     delta_v: [2.93e+3,0,0] #[2.913e+3,0,000] #Prograde, 'radial', normal
     time: 416

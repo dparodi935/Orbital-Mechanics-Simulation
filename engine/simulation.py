@@ -23,7 +23,6 @@ class sim():
         self.time_values = [0]
         
         
-        
     def return_direction_vectors(self, subject, soi, coord_system='vnc'):
         ''' Returns the velocity, normal and cross-track vectors of an orbiting body (subject)
             VNC Frame (for now)

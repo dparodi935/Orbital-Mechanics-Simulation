@@ -12,9 +12,10 @@ from matplotlib.collections import PatchCollection
 
 
 #%%
-def positions_from_orbital_parameters(r0, e_vector, normal, theta_correction, soi_position):
+def positions_from_orbital_parameters(orbital_data, soi_position):
     ''' Takes in parameters of an orbit and returns position values to plot it
     '''
+    r0, e_vector, normal, theta_correction = orbital_data.values()
     if not r0:
         #in case body isnt orbiting anything
         return np.array([[0,0,0]]) 
@@ -50,6 +51,36 @@ def display_time(time):
        decimal = 1
    return f"Time = {time/3600:.{decimal}f} hrs"    
 
+def return_display_text(body, orbital_data, body_soi_speed, soi):
+    satellite_name = body.name
+    colour = body.colour
+    speed = np.linalg.norm(body_soi_speed)
+    soi_name = soi.name
+    
+    soi_radius = soi.radius
+    r0, e_vector = orbital_data['r0'], orbital_data['e_vector']
+    e = np.linalg.norm(e_vector)
+    peri = r0/(1+e) - soi_radius
+    apo = max(r0/(1-e) - soi_radius,-soi_radius)
+    
+    peri_val = f"{peri/(1e+3):,.0f} km"
+    if apo > soi_radius:
+        apo_val = f"{apo/(1e+3):,.0f} km"
+    else:
+        apo_val = "∞" 
+    speed_val = f"{speed:,.0f} m/s"
+    
+    text = (
+        f"{'Satellite: ' + satellite_name:<30}\n"
+        f"{'Colour: ' + colour:<30}\n"
+        f"{'Peri: ' + peri_val:<30}\n"
+        f"{'Apo: ' + apo_val:<30}\n"
+        f"{'Rel Speed: ' + speed_val:<30}\n"
+        f"{'SOI: ' + soi_name:<30}"
+        )
+
+    return text
+
 def generate_sphere(centre, radius, theta_bounds = [0, np.pi], phi_bounds = [0 , 2*np.pi]):
     theta = np.linspace(*theta_bounds, 100)
     phi = np.linspace(*phi_bounds, 100)
@@ -82,7 +113,7 @@ def generate_frame_time_data(simulation_time_data, reference_frame):
 def return_display_half_width(master_bodies_list):
     #calculate how large we need to make the display window
     greatest_extent = max([abs(np.array(item.position_history)).max() for item in master_bodies_list])
-    display_half_width = greatest_extent * 1.1
+    display_half_width = greatest_extent * 1.2
     return display_half_width
 
 def return_body_colour(body):
@@ -103,6 +134,7 @@ def return_body_colour(body):
     return colour
 
 def configure_x_y_axes(ax, display_half_width,dimension=None):
+    #display_half_width = display_half_width * 1.25
     ax.set_xlim(-display_half_width, display_half_width)
     ax.set_ylim(-display_half_width, display_half_width)
     ax.set_aspect('equal', adjustable='box')
@@ -110,6 +142,7 @@ def configure_x_y_axes(ax, display_half_width,dimension=None):
     if dimension == '2d':
         ax.set_xlabel('x (m)')
         ax.set_ylabel('y (m)')
+        
     elif dimension == '3d':
         #if we are in 3d, we don't want to draw the axes
         ax.zaxis.set_label_position('none')
@@ -138,23 +171,6 @@ def append_interpolated_body_data(body, vel_data, soi_data, simulation_time_data
     return pos_data, soi_data, vel_data
 
 
-def draw_3D_background(ax, reference_frame, display_half_width):
-    #Change this so what is drawn is decided in simulation.py frame() function?
-    if reference_frame == 'earth':
-        X, Y, Z = generate_sphere([0,0,0], constants.earth_radius, theta_bounds=[0,0.5*np.pi])
-        ax.plot_surface(X,Y,Z,color='blue',zorder = 8 ) #put on 9 so its below characters?
-        
-        X, Y, Z = generate_sphere([0,0,0], constants.earth_radius, theta_bounds=[0.5*np.pi,np.pi])
-        ax.plot_surface(X,Y,Z,color='blue', zorder = 0 )
-        
-        display_half_width = max(display_half_width, 11000000) #fix for visual issue of earth's south pole sticking out of zero inclination plane
-
-    #Draw zero Inclination Plane
-    X, Y = np.meshgrid([-display_half_width, display_half_width],[-display_half_width, display_half_width])
-    Z = X * 0
-    ax.plot_surface(X,Y,Z,alpha=0.4,color='gray',zorder=5)
-    ax.grid(False)
-
 def return_soi(soi_data, frame, i):
     #check if the body changes soi at any point. 
     if len(soi_data[i]) > 1:
@@ -165,22 +181,6 @@ def return_soi(soi_data, frame, i):
         soi = soi_data[i][0]    
         
     return soi
-
-def return_position_values_of_orbit(bodies_list, pos_data, vel_data, soi, frame, i):
-    soi_index = bodies_list.index(soi)
-    
-    #get data of the body in question and what it's orbiting (whose soi it is in)
-    soi_mass = soi.mass
-    soi_position = pos_data[soi_index][frame]
-    soi_velocity = vel_data[soi_index][frame]
-    body_position = pos_data[i][frame]
-    body_velocity = vel_data[i][frame]
-    
-    #use this data  to calculate the current orbit so it can be drawn
-    r0, e_vector, normal, theta_correction = calculations.determine_orbit_from_state(soi_mass, soi_position, soi_velocity, body_position, body_velocity)
-    position_values = positions_from_orbital_parameters(r0, e_vector, normal, theta_correction, soi_position) 
-    
-    return position_values
 
 def output_animation(animation, animation_params, fig):
     mode, framerate, dpi, save_folder, filename = animation_params["mode"], animation_params["framerate"], animation_params["dpi"], animation_params["save_folder"], animation_params["filename"]
@@ -206,9 +206,10 @@ def output_animation(animation, animation_params, fig):
 def init_2D(master_bodies_list, simulation_time_data, reference_frame):
     display_half_width = return_display_half_width(master_bodies_list)
         
-    fig = plt.figure()
+    fig = plt.figure(figsize=(12, 10))
     ax = fig.add_subplot()
-
+    #fig.subplots_adjust(right=0.8) 
+    
     configure_x_y_axes(ax, display_half_width, dimension='2d')
     
     num_frames, animation_time_data = generate_frame_time_data(simulation_time_data, reference_frame)
@@ -220,8 +221,25 @@ def init_2D(master_bodies_list, simulation_time_data, reference_frame):
     pos_data = []
     vel_data = []
     soi_data = []
+    text_displays = []
+
+
+    #if body is a satellite, create text_display - OPTIMISE
+    satellite_num = 0
+    max_box_number = 5
+    for i, body in enumerate(master_bodies_list):
+        if body.mass < 1e+10: satellite_num += 1
+        
+    satellite_num = min(satellite_num, max_box_number)
+    v_sep = 0.65/5.1
     
-    
+    for i in range(satellite_num):
+        v_pos = 0.85 - i * v_sep 
+        text_displays.append(fig.text(0.84, v_pos, '',
+                                     ha='left', va='top',
+                                     bbox=dict(facecolor='white', edgecolor='gray', alpha=0.7)))
+        
+    #Configure body sprites and trjacetory lines
     for i, body in enumerate(master_bodies_list):
         colour = return_body_colour(body)
         
@@ -238,28 +256,46 @@ def init_2D(master_bodies_list, simulation_time_data, reference_frame):
             characters.append(ax.plot([],[], style, markersize=markersize)[0])
         
         lines.append(ax.plot([],[], colour, lw=0.5)[0])
-            
+        
         #interpolate body's data
         pos_data, soi_data, vel_data = append_interpolated_body_data(body, vel_data, soi_data, simulation_time_data, animation_time_data, pos_data)
     
     sim_data = {
-    "characters": characters,
-    "lines": lines,
-    "pos_data": pos_data,
-    "vel_data": vel_data,
-    "soi_data": soi_data,
-    "bodies_list": master_bodies_list,
-    "timer": timer,
-    "animation_time_data": animation_time_data 
-     }
+        "characters": characters,
+        "lines": lines,
+        "text_displays": text_displays,
+        "pos_data": pos_data,
+        "vel_data": vel_data,
+        "soi_data": soi_data,
+        "bodies_list": master_bodies_list,
+        "timer": timer,
+        "animation_time_data": animation_time_data 
+         }
     
     return fig, num_frames, sim_data
     
 
+def create_2D_animation(master_bodies_list, simulation_time_data, reference_frame, animation_params):
+    framerate = animation_params["framerate"]
+    fig, num_frames, sim_data = init_2D(master_bodies_list, simulation_time_data, reference_frame)
+    
+    animation = FuncAnimation(
+                    func=partial(update_frame_2D, sim_data=sim_data),
+                    fig=fig,
+                    frames=num_frames,
+                    blit=False,
+                    repeat=True,
+                    interval=1000/framerate
+                )
+    
+    output_animation(animation, animation_params, fig) 
+
+
 def update_frame_2D(frame, sim_data=None):
-    characters, lines, pos_data, vel_data, soi_data, bodies_list, timer, animation_time_data = (
+    characters, lines, text_displays, pos_data, vel_data, soi_data, bodies_list, timer, animation_time_data = (
         sim_data["characters"],
         sim_data["lines"],
+        sim_data["text_displays"],
         sim_data["pos_data"],
         sim_data["vel_data"],
         sim_data["soi_data"],
@@ -272,9 +308,12 @@ def update_frame_2D(frame, sim_data=None):
     time = display_time(animation_time_data[frame])
     timer.set_text(time)
     
+    display_counter = 0
+    
     for i in range(len(characters)): 
+        body = bodies_list[i]
         #draw body
-        if bodies_list[i].preset:
+        if body.preset:
             characters[i].set_center(pos_data[i][frame])
         else:
             x_values = pos_data[i][frame][0]
@@ -288,27 +327,34 @@ def update_frame_2D(frame, sim_data=None):
             
         #Calculate and plot the trajectory
         if frame > 0: 
-            orbital_trajectory = return_position_values_of_orbit(bodies_list, pos_data, vel_data, soi, frame, i)
+            soi_index = bodies_list.index(soi)
+            
+            #get data of the body in question and what it's orbiting (whose soi it is in)
+            soi_mass = soi.mass
+            soi_position = pos_data[soi_index][frame]
+            soi_velocity = vel_data[soi_index][frame]
+            body_position = pos_data[i][frame]
+            body_velocity = vel_data[i][frame]
+            
+            r0, e_vector, normal, theta_correction = calculations.determine_orbit_from_state(soi_mass, soi_position, soi_velocity, body_position, body_velocity)
+            orbital_data = {'r0':r0, 'e_vector':e_vector, 'normal':normal, 'theta_correction':theta_correction}
+
+            orbital_trajectory = positions_from_orbital_parameters(orbital_data, soi_position) 
                 
             lines[i].set_data(*orbital_trajectory[:,:2].T)  
         
+            #Update satellite's display 
+            if display_counter >= 4:
+                continue
+            
+            if body.mass < 1e+10:
+                display = text_displays[display_counter]
+                body_soi_speed = body_velocity - soi_velocity
+                updated_display_text = return_display_text(body, orbital_data, body_soi_speed, soi)
+                display.set_text(updated_display_text)
+                display_counter += 1
    
-    return characters + lines + [timer]
-
-def create_2D_animation(master_bodies_list, simulation_time_data, reference_frame, animation_params):
-    framerate = animation_params["framerate"]
-    fig, num_frames, sim_data = init_2D(master_bodies_list, simulation_time_data, reference_frame)
-    
-    animation = FuncAnimation(
-                    func=partial(update_frame_2D, sim_data=sim_data),
-                    fig=fig,
-                    frames=num_frames,
-                    blit=True,
-                    repeat=True,
-                    interval=1000/framerate
-                )
-    
-    output_animation(animation, animation_params, fig) 
+    return characters + lines + [timer] + text_displays
     
 #%% 3d Matplotlib Animation
 
@@ -364,6 +410,23 @@ def init_3D(master_bodies_list, simulation_time_data, reference_frame):
     
     return fig, num_frames, sim_data
 
+def draw_3D_background(ax, reference_frame, display_half_width):
+    #Change this so what is drawn is decided in simulation.py frame() function?
+    if reference_frame == 'earth':
+        X, Y, Z = generate_sphere([0,0,0], constants.earth_radius, theta_bounds=[0,0.5*np.pi])
+        ax.plot_surface(X,Y,Z,color='blue',zorder = 8 ) #put on 9 so its below characters?
+        
+        X, Y, Z = generate_sphere([0,0,0], constants.earth_radius, theta_bounds=[0.5*np.pi,np.pi])
+        ax.plot_surface(X,Y,Z,color='blue', zorder = 0 )
+        
+        display_half_width = max(display_half_width, 11000000) #fix for visual issue of earth's south pole sticking out of zero inclination plane
+
+    #Draw zero Inclination Plane
+    X, Y = np.meshgrid([-display_half_width, display_half_width],[-display_half_width, display_half_width])
+    Z = X * 0
+    ax.plot_surface(X,Y,Z,alpha=0.4,color='gray',zorder=5)
+    ax.grid(False)
+
 def update_matp_frame_3D(frame, sim_data=None):
     characters, lines, trajectory_lines, pos_data, vel_data, soi_data, bodies_list, timer, animation_time_data = (
         sim_data["characters"],
@@ -404,9 +467,10 @@ def update_matp_frame_3D(frame, sim_data=None):
             continue
                 
         # Calculate and plot the trajectory
-        if frame>0: 
-            orbital_trajectory = return_position_values_of_orbit(bodies_list, pos_data, vel_data, soi, frame, i)
-       
+        if frame > 0: 
+            orbital_data = return_orbital_data(bodies_list, pos_data, vel_data, soi, frame, i)
+            orbital_trajectory = positions_from_orbital_parameters(orbital_data, soi.position) 
+
             trajectory_lines[i].set_data(*orbital_trajectory[:,:2].T)  
             trajectory_lines[i].set_3d_properties(orbital_trajectory[:,2].T)
         
