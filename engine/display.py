@@ -288,7 +288,7 @@ def create_2D_animation(master_bodies_list, simulation_time_data, reference_fram
     animation = FuncAnimation(
                     func=partial(update_frame_2D, sim_data=sim_data),
                     fig=fig,
-                    frames=num_frames,
+                    frames=range(1,num_frames),
                     blit=False,
                     repeat=True,
                     interval=1000/framerate
