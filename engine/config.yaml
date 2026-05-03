@@ -1,7 +1,7 @@
 # config.yaml
 
 SIMULATION_PARAMS:
-    duration: 12 #days
+    duration: 5 #days
     initial_dt: 1
     debug_mode: true # true or false
  
@@ -12,7 +12,7 @@ CALCULATION_PARAMS:
    
 #set either save_animation OR live_display to "True" to generate animation. Currently the specific setting only affects 2D
 ANIMATION_PARAMS:
-  mode: saved #'saved' or 'interactive' or 'none'
+  mode: interactive #'saved' or 'interactive' or 'none'
   dimensions: 2D #2D, 3D
   dpi: 250  
   framerate: 35
@@ -35,7 +35,7 @@ PRESET_BODIES:
   - preset: moon
     mass: 7.346e+22
     radius: 1.738e+6
-    color: green
+    color: white
 
 #Select the environment the simulation takes place in    
 # Frames: cislunar, earth, sol 
@@ -57,7 +57,7 @@ BODIES:
   - name: Free Return
     mass: 1e+3
     radius: 1
-    color: black
+    color: green
     position_input_mode: cylindrical_polar # 'cartesian' or 'cylindrical_polar'
     initial_pos: [1.18e+6,5.5,0] # given in altitude (above the body its orbiting)
     coord_origin: earth # Format: host_body_name[body2_name, LX]
