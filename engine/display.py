@@ -134,6 +134,9 @@ def return_body_colour(body):
     
     return colour
 
+def configure_text():
+    plt.rcParams.update({'font.family': 'consolas', 'font.size': 10 })
+
 def configure_x_y_axes(ax, display_half_width,dimension=None):
     ax.set_xlim(-display_half_width, display_half_width)
     ax.set_ylim(-display_half_width, display_half_width)
@@ -234,6 +237,7 @@ def init_2D(master_bodies_list, simulation_time_data, reference_frame):
     ax = fig.add_subplot()
     #fig.subplots_adjust(right=0.8) 
     
+    configure_text()
     configure_x_y_axes(ax, display_half_width, dimension='2d')
     
     num_frames, animation_time_data = generate_frame_time_data(simulation_time_data, reference_frame)
@@ -252,19 +256,19 @@ def init_2D(master_bodies_list, simulation_time_data, reference_frame):
         colour = return_body_colour(body)
         
         if body.preset:
-            radius = max(body.radius, constants.earth_radius)
+            radius = max(body.radius, constants.earth_radius*1.5)
             c = plt.Circle([0,0], radius, color=colour)
             
             ax.add_patch(c)
             characters.append(c)
         else:
-            markersize = 4 
+            markersize = 6 
             style = f"{colour}o"
             
             #set up objects for body and its trajectory line
             characters.append(ax.plot([],[], style, markersize=markersize)[0])
-        
-        lines.append(ax.plot([],[], colour, lw=1.5)[0])
+         
+        lines.append(ax.plot([],[], colour, lw=1.5, zorder = 0)[0])
         
         #interpolate body's data
         pos_data, soi_data, vel_data = append_interpolated_body_data(body, vel_data, soi_data, simulation_time_data, animation_time_data, pos_data)
@@ -377,6 +381,7 @@ def init_3D(master_bodies_list, simulation_time_data, reference_frame):
     
     draw_3D_background(ax, reference_frame, display_half_width)
     
+    configure_text()
     configure_x_y_axes(ax, display_half_width, dimension='3d')
         
     num_frames, animation_time_data = generate_frame_time_data(simulation_time_data, reference_frame)

@@ -12,7 +12,7 @@ CALCULATION_PARAMS:
    
 #set either save_animation OR live_display to "True" to generate animation. Currently the specific setting only affects 2D
 ANIMATION_PARAMS:
-  mode: saved #'saved' or 'interactive' or 'none'
+  mode: interactive #'saved' or 'interactive' or 'none'
   dimensions: 2D #2D, 3D
   dpi: 200  
   framerate: 35
