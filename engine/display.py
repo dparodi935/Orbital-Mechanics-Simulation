@@ -229,6 +229,8 @@ def init_2D(master_bodies_list, simulation_time_data, reference_frame):
     display_half_width = return_display_half_width(master_bodies_list)
         
     fig = plt.figure(figsize=(12, 10))
+    fig.tight_layout(pad=0.1)
+    
     ax = fig.add_subplot()
     #fig.subplots_adjust(right=0.8) 
     
@@ -262,7 +264,7 @@ def init_2D(master_bodies_list, simulation_time_data, reference_frame):
             #set up objects for body and its trajectory line
             characters.append(ax.plot([],[], style, markersize=markersize)[0])
         
-        lines.append(ax.plot([],[], colour, lw=1)[0])
+        lines.append(ax.plot([],[], colour, lw=1.5)[0])
         
         #interpolate body's data
         pos_data, soi_data, vel_data = append_interpolated_body_data(body, vel_data, soi_data, simulation_time_data, animation_time_data, pos_data)
