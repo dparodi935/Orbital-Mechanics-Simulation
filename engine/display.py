@@ -135,7 +135,6 @@ def return_body_colour(body):
     return colour
 
 def configure_x_y_axes(ax, display_half_width,dimension=None):
-    #display_half_width = display_half_width * 1.25
     ax.set_xlim(-display_half_width, display_half_width)
     ax.set_ylim(-display_half_width, display_half_width)
     ax.set_aspect('equal', adjustable='box')
@@ -225,6 +224,7 @@ def output_animation(animation, animation_params, fig):
 #%% 2D Matplotlib Animation
 
 def init_2D(master_bodies_list, simulation_time_data, reference_frame):
+    plt.close('all')
     plt.style.use('dark_background')
     display_half_width = return_display_half_width(master_bodies_list)
         
@@ -250,7 +250,8 @@ def init_2D(master_bodies_list, simulation_time_data, reference_frame):
         colour = return_body_colour(body)
         
         if body.preset:
-            c = plt.Circle([0,0], body.radius, color=colour)
+            radius = max(body.radius, constants.earth_radius)
+            c = plt.Circle([0,0], radius, color=colour)
             
             ax.add_patch(c)
             characters.append(c)
@@ -261,7 +262,7 @@ def init_2D(master_bodies_list, simulation_time_data, reference_frame):
             #set up objects for body and its trajectory line
             characters.append(ax.plot([],[], style, markersize=markersize)[0])
         
-        lines.append(ax.plot([],[], colour, lw=0.5)[0])
+        lines.append(ax.plot([],[], colour, lw=1)[0])
         
         #interpolate body's data
         pos_data, soi_data, vel_data = append_interpolated_body_data(body, vel_data, soi_data, simulation_time_data, animation_time_data, pos_data)
@@ -399,8 +400,8 @@ def init_3D(master_bodies_list, simulation_time_data, reference_frame):
         
         #setup objects for the body and its corresponding projection + trajectory lines
         characters.append(ax.plot([],[],[], style, markersize=markersize, zorder=10)[0])
-        lines.append(ax.plot([],[],[], colour, lw=0.5, zorder=9)[0])
-        trajectory_lines.append(ax.plot([],[],[], colour, lw=0.5, zorder=9)[0])
+        lines.append(ax.plot([],[],[], colour, lw=1, zorder=9)[0])
+        trajectory_lines.append(ax.plot([],[],[], colour, lw=1, zorder=9)[0])
         
         #interpolate the body's data
         append_interpolated_body_data(body, vel_data, soi_data, simulation_time_data, animation_time_data, pos_data)

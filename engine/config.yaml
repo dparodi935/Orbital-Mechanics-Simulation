@@ -14,7 +14,7 @@ CALCULATION_PARAMS:
 ANIMATION_PARAMS:
   mode: saved #'saved' or 'interactive' or 'none'
   dimensions: 2D #2D, 3D
-  dpi: 250  
+  dpi: 200  
   framerate: 35
   save_folder: "C:/Users/dp271/Downloads"
   filename: "gravity_sim_tli"
