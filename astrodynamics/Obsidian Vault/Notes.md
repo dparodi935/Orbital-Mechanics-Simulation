@@ -1,4 +1,0 @@
-- make my astro code a branch of my orb mech sim
-- astro: do I awlays use the orbita host OBJECT as an input to functions? instead of specific properties
-- add note documents to gitignore
-- oython astrodynamics thing. make it terminal based, can input a satllite id and it will visualise its curernt position, or from tle etc.

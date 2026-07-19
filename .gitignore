@@ -4,3 +4,5 @@ __pycache__/
 *.pyo
 *.pyd
 .spyproject/
+
+obsidian/
