@@ -49,19 +49,6 @@ def return_S(z):
     elif z==0:
         return 1/6
     
-def return_bracket_y(z, r_1, r_2, direction="pro"):
-    r_1_mag = np.linalg.norm(r_1)
-    r_2_mag = np.linalg.norm(r_2)
-    
-    S = return_S(z)
-    C = return_C(z)
-    
-    delta_theta = return_delta_theta(r_1, r_2, direction="pro")
-    A = return_A(delta_theta, r_1, r_2)
-    
-    y = r_1_mag + r_2_mag + A * (z*S-1)/(np.sqrt(C))
-    return y
-
 def return_y(z, r_1, r_2, A, S, C):
     r_1_mag = np.linalg.norm(r_1)
     r_2_mag = np.linalg.norm(r_2)
