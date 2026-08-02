@@ -2,7 +2,7 @@ from scipy.optimize import brentq
 import numpy as np
 from basic import elements_from_state
 
-def return_delta_theta(r_1,r_2,direction):
+def return_delta_theta(r_1,r_2,direction="pro"):
     cross_z = np.cross(r_1, r_2)[2]
     r_1_mag = np.linalg.norm(r_1)
     r_2_mag = np.linalg.norm(r_2)
@@ -49,12 +49,29 @@ def return_S(z):
     elif z==0:
         return 1/6
     
+def return_bracket_y(z, r_1, r_2, direction="pro"):
+    r_1_mag = np.linalg.norm(r_1)
+    r_2_mag = np.linalg.norm(r_2)
+    
+    S = return_S(z)
+    C = return_C(z)
+    
+    delta_theta = return_delta_theta(r_1, r_2, direction="pro")
+    A = return_A(delta_theta, r_1, r_2)
+    
+    y = r_1_mag + r_2_mag + A * (z*S-1)/(np.sqrt(C))
+    return y
 
 def return_y(z, r_1, r_2, A, S, C):
     r_1_mag = np.linalg.norm(r_1)
     r_2_mag = np.linalg.norm(r_2)
+    y = r_1_mag + r_2_mag + A * (z*S-1)/(np.sqrt(C))
     
-    return r_1_mag + r_2_mag + A * (z*S-1)/(np.sqrt(C))
+    # Safeguard against negative y in iterative solvers
+    if A > 0 and y < 0:
+        print("NEGATIVE Y")
+        return np.nan
+    return y
 
 def return_lagrange_coefficients(mu,r_1,r_2,A,S,C,y,z):
     r_1_mag = np.linalg.norm(r_1)
@@ -90,6 +107,30 @@ def F(z, r_1, r_2, delta_t, mu, direction):
     
     return ((y/C)**1.5)*S + A * np.sqrt(y) - np.sqrt(mu) * delta_t
 
+def return_lower_z_bound(r_1, r_2, delta_t, mu, direction):
+    r_1_n = np.linalg.norm(r_1)
+    r_2_n = np.linalg.norm(r_2)
+    
+    R = r_1_n + r_2_n
+    delta_theta = return_delta_theta(r_1, r_2, direction)
+    K = 2 * np.sqrt(r_1_n * r_2_n) * np.cos(delta_theta/2)
+    
+    if K > 0:
+        return - (2* np.arccosh(R/K))**2   
+
+    #if K is negative, arccosh will return NaN -> need different solution
+    
+    a = -1.0
+    
+    while F(a, r_1, r_2, delta_t, mu, direction) > 0.0:
+        a = a * 2
+        
+        if a < -1e+5:
+            #prevents explosion
+            raise ValueError("TOF is too short")
+    
+    return a
+    
 def lambert(mu, r_1, r_2, delta_t, direction="pro"):
     """Return the orbital elements of an orbit given two positions and a specified time of flight
 
@@ -103,8 +144,10 @@ def lambert(mu, r_1, r_2, delta_t, direction="pro"):
     Returns:
         tuple: Returns tuple of shape (2,) containing the velocities at the initial and final position: (v_1, v_2)
     """
+    b_bound = 4.0 * (np.pi ** 2)
+    z_0 = return_lower_z_bound(r_1, r_2, delta_t, mu, direction)
     
-    z = brentq(f=lambda x: F(x, r_1, r_2, delta_t, mu, direction),a=-1e+2,b=1e+2)
+    z = brentq(f=lambda x: F(x, r_1, r_2, delta_t, mu, direction),a=z_0+1e-6,b=b_bound-1e-6)
 
     S = return_S(z)
     C = return_C(z)
