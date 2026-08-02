@@ -1,14 +1,15 @@
 from scipy.optimize import brentq
 import numpy as np
-from basic import elements_from_state
 
 def return_delta_theta(r_1,r_2,direction="pro"):
     cross_z = np.cross(r_1, r_2)[2]
     r_1_mag = np.linalg.norm(r_1)
     r_2_mag = np.linalg.norm(r_2)
 
-    u = np.dot(r_1,r_2)/(r_1_mag*r_2_mag)
-    i_cos = np.arccos(u)
+    d = np.dot(r_1, r_2)
+    c = np.linalg.norm(np.cross(r_1, r_2))
+    i_cos = np.arctan2(c,d)
+    
     if direction=="pro":
         if cross_z >= 0:
             return i_cos
@@ -27,7 +28,8 @@ def return_A(delta_theta, r_1, r_2):
     r_1_mag = np.linalg.norm(r_1)
     r_2_mag = np.linalg.norm(r_2)
 
-    return np.sin(delta_theta) * np.sqrt((r_1_mag * r_2_mag)/(1 - np.cos(delta_theta)))
+    #return np.sin(delta_theta) * np.sqrt((r_1_mag * r_2_mag)/(1 - np.cos(delta_theta)))
+    return np.sqrt(2 * r_1_mag * r_2_mag) * np.cos(0.5*delta_theta)
 
 def return_C(z):
     sqrt_z = np.sqrt(abs(z))
