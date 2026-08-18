@@ -2,25 +2,22 @@ from scipy.optimize import brentq
 import numpy as np
 
 def return_delta_theta(r_1,r_2,direction="pro"):
-    cross_z = np.cross(r_1, r_2)[2]
-    r_1_mag = np.linalg.norm(r_1)
-    r_2_mag = np.linalg.norm(r_2)
-
+    cross = np.cross(r_1, r_2)
     d = np.dot(r_1, r_2)
-    c = np.linalg.norm(np.cross(r_1, r_2))
-    i_cos = np.arctan2(c,d)
+    c = np.linalg.norm(cross)
+    i_tan = np.arctan2(c,d)
     
-    if direction=="pro":
+    cross_z = cross[2]
+    if direction == "pro":
         if cross_z >= 0:
-            return i_cos
+            return i_tan
         elif cross_z < 0:
-            return 2*np.pi - i_cos
-        
-    elif direction=="retro":
+            return 2*np.pi - i_tan
+    elif direction == "retro":
         if cross_z < 0:
-            return i_cos
+            return i_tan
         elif cross_z >= 0:
-            return 2*np.pi - i_cos
+            return 2*np.pi - i_tan
     else:
         print("Error in direction variable")
 
