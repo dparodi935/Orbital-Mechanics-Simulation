@@ -1,3 +1,8 @@
+import sys, os
+script_dir = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(os.path.join(script_dir, ".."))
+
+
 import matplotlib
 matplotlib.use('Qt5Agg') 
 
@@ -5,7 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from functools import partial
 import calculations 
-import constants
+from astrodynamics import constants
 import numpy as np
 from matplotlib.patches import Circle
 from matplotlib.collections import PatchCollection
