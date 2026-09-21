@@ -2,7 +2,7 @@ import numpy as np
 from numpy.linalg import norm
 #orbital_elements = h, i, raan, e, argp, ta
 
-def return_perifocal_to_bodycentric_equatorial_matrix(orbital_shape):
+def return_bodycentric_equatorial_to_perifocal_matrix(orbital_shape):
     h, i, raan, e, argp = orbital_shape
     Q = np.zeros((3,3))
     
@@ -16,6 +16,7 @@ def return_perifocal_to_bodycentric_equatorial_matrix(orbital_shape):
 
     return Q
 
+
 def elements_from_state(mu, r_vector, v_vector):
     ''' Assumes reference plane is the x-y plane
     '''
@@ -23,7 +24,7 @@ def elements_from_state(mu, r_vector, v_vector):
     v = norm(v_vector)
 
     #radial speed
-    v_r = norm(np.dot(r_vector,v_vector))
+    v_r = np.dot(r_vector,v_vector)/r
 
     #angular momentum
     h_vector = np.cross(r_vector,v_vector)
@@ -46,7 +47,7 @@ def elements_from_state(mu, r_vector, v_vector):
         raan = 2*np.pi - np.arccos(N_vector[0]/N)
 
     #eccentricity
-    e_vector = 1/mu * ((v**2 - mu/r)*r_vector - r * v_r * v_vector)
+    e_vector = 1/mu * ((v**2 - mu/r)*r_vector - np.dot(r_vector,v_vector) * v_vector)
     e = norm(e_vector)
 
     #argument of perigee
@@ -74,6 +75,15 @@ def elements_from_state(mu, r_vector, v_vector):
     return h, i, raan, e, argp, ta
 
 def state_from_elements(mu, orbital_elements):
+    """Calculates the state (position, velocity) from the orbital elements
+
+    Args:
+        mu (float): Gravitational parameter. # m^3 s^-2 kg^-1
+        orbital_elements (list): h (m^2/s), i (rad), raan (rad), e, argp (rad), ta (rad)
+
+    Returns:
+        tuple [np.array, np.array]: position, velocity. m, m/s
+    """
     h, i, raan, e, argp, ta = orbital_elements
 
     #calculate perifocal position
@@ -92,7 +102,8 @@ def state_from_elements(mu, orbital_elements):
     
     #perifocal to bodycentric transformation matrix
     orbital_shape = orbital_elements[:5]
-    Q = return_perifocal_to_bodycentric_equatorial_matrix(orbital_shape)
+    Q_T = return_bodycentric_equatorial_to_perifocal_matrix(orbital_shape)
+    Q = Q_T.T
     
     #use matrix to transform
     position = np.matmul(Q, pf_position)
