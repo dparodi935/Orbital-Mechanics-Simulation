@@ -1,0 +1,48 @@
+name,id
+sun,10
+solar system barycenter,0
+mercury barycenter,1
+venus barycenter,2
+earth-moon barycenter,3
+mars barycenter,4
+jupiter barycenter,5
+saturn barycenter,6
+uranus barycenter,7
+neptune barycenter,8
+pluto barycenter,9
+mercury,199
+venus,299
+earth,399
+mars,499
+jupiter,599
+saturn,699
+uranus,799
+neptune,899
+moon,301
+phobos,401
+deimos,402
+io,501
+europa,502
+ganymede,503
+callisto,504
+mimas,601
+enceladus,602
+tethys,603
+dione,604
+rhea,605
+titan,606
+hyperion,607
+iapetus,608
+ariel,701
+umbriel,702
+titania,703
+oberon,704
+miranda,705
+triton,801
+pluto,999
+ceres,1;
+eris,136199;
+haumea,136108;
+makemake,136472;
+vesta,4;
+pallas,2;
