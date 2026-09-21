@@ -1,12 +1,12 @@
 import math
 
-def return_j0(y: int, m: int, d: float):
+def return_j0(y: int, m: int, d: int):
     """Returns the Julian day number at 0h UT
 
     Args:
         y (int): year
         m (int): month
-        d (float): day
+        d (int): day
 
     Returns:
         int: Julian day number at 0h UT
@@ -18,20 +18,29 @@ def return_j0(y: int, m: int, d: float):
     if d <= 0.0 or d > 31.0:
         raise ValueError("Day must be in range 1 <= d <= 31")
     
-    j0 = 367 * y - math.trunc(7*(y+math.trunc((m+9)/12))/4) + math.trunc(275 * m/9 + d + 1,721,013.5)
+    
+    a = (m+9)/12
+    b = 7*(y+math.trunc(a))/4
+    c = 275 * m/9 + d + 1721013.5
+    
+    j0 = 367 * y - math.trunc(b) + c
     return j0
 
+def return_jd(y: int, m: int, d: int, UT: float) -> float:
+    j0 = return_j0(y,m,d)
+    jd = j0 + UT/24
+    return jd
 
-def return_t0(J0: int) -> float:
-    """Returns the time to J0 from J200 in terms of Julian centuries
+def return_t0(JD: int) -> float:
+    """Returns the time to JD from J200 in terms of Julian centuries
 
     Args:
-        J0 (int): Julian day number at 0h UT
+        JD (int): Julian day number 
         
     Returns:
         float:
     """
-    t0 = (J0 - 2,451,545)/36,525.0
+    t0 = (JD - 2451545)/36525.0
     return t0
 
 
@@ -64,12 +73,12 @@ def return_gw_st(theta_G0: float, UT: float) -> float:
     return theta_G
 
 
-def return_sidereal(UT: float, d: float, m: int, y: int, longitude: float) -> float:
+def return_sidereal(UT: float, d: int, m: int, y: int, longitude: float) -> float:
     """Calculate the local sidereal time in degrees
 
     Args:
         UT (float): Universal time in hours
-        d (float): day
+        d (int): day
         m (int): month
         y (int): year
         longitude (float): longitude in degrees
