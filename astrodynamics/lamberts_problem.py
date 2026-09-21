@@ -12,12 +12,12 @@ def return_delta_theta(r_1,r_2,direction="pro"):
         if cross_z >= 0:
             return i_tan
         elif cross_z < 0:
-            return 2*np.pi - i_tan
+            return 2 * np.pi - i_tan
     elif direction == "retro":
         if cross_z < 0:
             return i_tan
         elif cross_z >= 0:
-            return 2*np.pi - i_tan
+            return 2 * np.pi - i_tan
     else:
         print("Error in direction variable")
 
@@ -28,15 +28,17 @@ def return_A(delta_theta, r_1, r_2):
     #return np.sin(delta_theta) * np.sqrt((r_1_mag * r_2_mag)/(1 - np.cos(delta_theta)))
     return np.sqrt(2 * r_1_mag * r_2_mag) * np.cos(0.5*delta_theta)
 
+
 def return_C(z):
     sqrt_z = np.sqrt(abs(z))
     
     if z>0:
-        return (1-np.cos(sqrt_z))/z
+        return (1 - np.cos(sqrt_z))/z
     elif z<0:
         return (np.cosh(sqrt_z) - 1)/(-z)
     elif z==0:
         return 0.5    
+
 
 def return_S(z):
     sqrt_z = np.sqrt(abs(z))
@@ -48,6 +50,7 @@ def return_S(z):
     elif z==0:
         return 1/6
     
+    
 def return_y(z, r_1, r_2, A, S, C):
     r_1_mag = np.linalg.norm(r_1)
     r_2_mag = np.linalg.norm(r_2)
@@ -57,7 +60,9 @@ def return_y(z, r_1, r_2, A, S, C):
     if A > 0 and y < 0:
         print("NEGATIVE Y")
         return np.nan
+    
     return y
+
 
 def return_lagrange_coefficients(mu,r_1,r_2,A,S,C,y,z):
     r_1_mag = np.linalg.norm(r_1)
@@ -117,28 +122,29 @@ def return_lower_z_bound(r_1, r_2, delta_t, mu, direction):
     
     return a
     
+    
 def lambert(mu, r_1, r_2, delta_t, direction="pro"):
-    """Return the orbital elements of an orbit given two positions and a specified time of flight
+    """Return the final and inital velocity of a trajectory given two positions and a specified time of flight
 
     Args:
-        mu (float): Standard gravitational parameter (G*M) of central body
-        r_1 (np.ndarray): Array of shape (3,) representing the initial position of the body
-        r_2 (np.ndarray): Array of shape (3,) representing the final position of the body
-        delta_t (float): Time of flight between the  two specified positions
+        mu (float): Standard gravitational parameter (G*M) of central body. m^3 s^-2 kg^-1
+        r_1 (np.ndarray): Array of shape (3,) representing the initial position of the body in Cartesian coordinates. Metres
+        r_2 (np.ndarray): Array of shape (3,) representing the final position of the body in Cartesian coordinates. Metres
+        delta_t (float): Time of flight between the  two specified positions. Seconds
         direction (str, optional): Given [0,0,1] as "North", the direction of the orbit, prograde or retrograde. Defaults to "pro".
 
     Returns:
-        tuple: Returns tuple of shape (2,) containing the velocities at the initial and final position: (v_1, v_2)
+        tuple: Returns tuple of shape (2,) containing the velocities at the initial and final velocity: (v_1, v_2). m/s
     """
     b_bound = 4.0 * (np.pi ** 2)
     z_0 = return_lower_z_bound(r_1, r_2, delta_t, mu, direction)
     
-    z = brentq(f=lambda x: F(x, r_1, r_2, delta_t, mu, direction),a=z_0+1e-6,b=b_bound-1e-6)
+    z = brentq(f=lambda x: F(x, r_1, r_2, delta_t, mu, direction), a=z_0+1e-6, b=b_bound-1e-6)
 
     S = return_S(z)
     C = return_C(z)
 
-    delta_theta = return_delta_theta(r_1,r_2,direction)
+    delta_theta = return_delta_theta(r_1, r_2, direction)
     A = return_A(delta_theta, r_1, r_2)
     y = return_y(z, r_1, r_2, A, S, C)
 
