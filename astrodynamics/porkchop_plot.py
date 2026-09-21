@@ -19,75 +19,69 @@ def return_transfer_orbit(position_1: np.ndarray, position_2: np.ndarray, tof: f
     return orbital_elements
 
 
-class Body():
-    def __init__(self, r:float, initial_ta: float=0.0):
-        self.position = np.array([r * np.cos(initial_ta), r * np.sin(initial_ta), 0])
-        self.speed = circular_velocity(mu, r)
-        self.velocity = np.array([- self.speed * np.sin(initial_ta), self.speed * np.cos(initial_ta), 0])
-        self.initial_angle = initial_ta
+def init_arrays(body1_name, body2_name, N = 100):
+    buffer = 4.3 # months
+    
+    initial_dep_time = dt.datetime(2012, 1, 1)
+
+    b1_init_pos, b1_init_vel = ephem.return_planet_state("horizons", body1_name, initial_dep_time)
+    b2_init_pos, b2_init_vel = ephem.return_planet_state("horizons", body2_name, initial_dep_time)
+
+    body1_ang_rate = np.linalg.norm(b1_init_vel)/np.linalg.norm(b1_init_pos)
+    body2_ang_rate = np.linalg.norm(b2_init_vel)/np.linalg.norm(b2_init_pos)
+    
+    rel_ang_rate = abs(body1_ang_rate - body2_ang_rate)
+    synodic_period = 2*np.pi/rel_ang_rate
+    syn_period_dt = dt.timedelta(seconds=synodic_period, weeks=buffer)
+    final_dep_time = initial_dep_time + syn_period_dt
+
+    dep_times_array = np.linspace(initial_dep_time, final_dep_time, N)
+    arr_times_array = np.linspace(initial_dep_time, final_dep_time, N)
+
+    delta_v_values = [[] for i in range(N)]
+
+    if verbose:
+        print(f"rel_ang_rate = {rel_ang_rate*12*month/(2*np.pi)} fraction/year")
+        print(f"synodic period = {synodic_period/(12*month)} years")
+        print(f"Departure times = {dep_times_array/month}")
+        print(f"Arrival times = {arr_times_array/month}")
         
-    def set_state(self, time: float):
-        r = np.linalg.norm(self.position)
-        ang_rate = self.speed/r
-        angle = self.initial_angle + ang_rate * time
-        
-        self.position[:] = [r * np.cos(angle), r * np.sin(angle), 0]
-        self.velocity[:] = [- self.speed * np.sin(angle), self.speed * np.cos(angle), 0]
-        
+    return dep_times_array, arr_times_array, delta_v_values
 
 
-body1 = Body(au, initial_ta=0)
-body2 = Body(1.52*au, initial_ta=0)
+body1_name = "earth"
+body2_name = "mars"
+N = 70
 
-N = 100
-
-body1_ang_rate = body1.speed/np.linalg.norm(body1.position)
-body2_ang_rate = body2.speed/np.linalg.norm(body2.position)
-rel_ang_rate = abs(body1_ang_rate - body2_ang_rate)
-synodic_period = 2*np.pi/rel_ang_rate
-
-centre = 23 * month
-dep_width = synodic_period * 1.0
-initial_dep_time = centre - dep_width/2
-final_dep_time = centre + dep_width/2
-
-dep_times_array = np.linspace(initial_dep_time, final_dep_time, N)
-arr_times_array = np.linspace(initial_dep_time + 7 * month, final_dep_time + 7 * month, N)
-
-delta_v_values = [[] for i in range(N)]
-
-if verbose:
-    print(f"rel_ang_rate = {rel_ang_rate*12*month/(2*np.pi)} fraction/year")
-    print(f"synodic period = {synodic_period/(12*month)} years")
-    print(f"Departure times = {dep_times_array/month}")
-    print(f"Arrival times = {arr_times_array/month}")
-
+dep_times_array, arr_times_array, delta_v_values = init_arrays(body1_name, body2_name, N)
 
 for i_dep, dep_time in enumerate(dep_times_array):
-    if verbose and i_dep % 100 == 0: print(f"{i_dep}/{N} ", end="", flush=True)
-    
-    body1.set_state(dep_time)
+    n_check = int(N/10)
+    if verbose and i_dep % n_check == 0: print(f"{i_dep}/{N} ", end="", flush=True)
 
+    b2_pos, b2_vel = ephem.return_planet_state("horizons", body2_name, dep_time)
+    
     for i_arr, arr_time in enumerate(arr_times_array):
-            body2.set_state(arr_time)
             
-            tof = arr_time - dep_time
+            tof_dt = arr_time - dep_time
+            tof = tof_dt.total_seconds()
             
             if tof > 0:
-                try:
-                    v_1, v_2 = lambert(mu, body1.position, body2.position, tof)
-            
-                    dep_delta_v = np.linalg.norm(v_1 - body1.velocity)
-                    arr_delta_v = np.linalg.norm(v_2 - body2.velocity)
-                    
-                    delta_v = dep_delta_v + arr_delta_v
-                    
-                    if delta_v > 15000:
-                        delta_v = np.nan 
+                b1_pos, b1_vel = ephem.return_planet_state("horizons", body1_name, arr_time)
+                
+                v_1, v_2 = lambert(mu, b1_pos, b2_pos, tof)
+        
+                dep_delta_v = np.linalg.norm(v_1 - b1_vel)
+                arr_delta_v = np.linalg.norm(v_2 - b2_vel)
+                
+                delta_v = dep_delta_v + arr_delta_v
+                
+                if delta_v > 15000:
+                    delta_v = np.nan 
                         
-                except:
+                """except Exception as e:
                     print("Exception called")
-                    delta_v = np.nan
+                    delta_v = np.nan"""
             else:
                 delta_v = np.nan
                 
@@ -96,9 +90,9 @@ for i_dep, dep_time in enumerate(dep_times_array):
     
 min_idx = np.argmin(np.nan_to_num(delta_v_values, nan = 1e+99))
 
-plt.pcolormesh(dep_times_array/month, arr_times_array/month, delta_v_values)
+plt.pcolormesh(dep_times_array, arr_times_array, delta_v_values)
 plt.colorbar()
-plt.scatter(dep_times_array[min_idx % N]/month, arr_times_array[min_idx // N]/month, marker= 'x')#, label=f"{delta_v_values[min_idx%N,min_idx//N]}")
+plt.scatter(dep_times_array[min_idx % N], arr_times_array[min_idx // N], marker= 'x')#, label=f"{delta_v_values[min_idx%N,min_idx//N]}")
 plt.xlabel("Departure Time (Months)")
 plt.ylabel("Arrival Time (Months)")
 plt.title("Total (Arr. + Dep.) Delta-V")
