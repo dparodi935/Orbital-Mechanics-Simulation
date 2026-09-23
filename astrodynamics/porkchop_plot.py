@@ -24,7 +24,7 @@ def return_transfer_orbit(position_1: np.ndarray, position_2: np.ndarray, tof: f
 
 
 def caculate_buffer(b1_init_pos, b2_init_pos):
-    mars_buffer_days = 30 * 7
+    mars_buffer_days = 30 * 1
     mars_sma = 1.523 * au
     earth_mars_a = 0.5*(au + mars_sma)
     a1 = np.linalg.norm(b1_init_pos)
@@ -40,7 +40,7 @@ def caculate_buffer(b1_init_pos, b2_init_pos):
 
 
 def init_arrays(body1_name, body2_name, N = 100):
-    initial_dep_time = dt.datetime(2012, 1, 1)
+    initial_dep_time = dt.datetime(2017, 1, 1)
     
     script_dir = os.path.dirname(os.path.realpath(__file__))
     yaml_constants = utility.open_yaml_file(script_dir, "constants")
@@ -58,11 +58,11 @@ def init_arrays(body1_name, body2_name, N = 100):
     synodic_period = 2*np.pi/rel_ang_rate 
     syn_period_dt = dt.timedelta(seconds=synodic_period)
     buffer_dt = dt.timedelta(days=buffer_days)
-    
+    end_buffer_dt = dt.timedelta(days=15*30)
     final_dep_time = initial_dep_time + syn_period_dt
     
     initial_arr_time = initial_dep_time + buffer_dt
-    final_arr_time = final_dep_time + buffer_dt*2
+    final_arr_time = final_dep_time + end_buffer_dt
 
     dep_times_array = np.linspace(initial_dep_time, final_dep_time, N)
     arr_times_array = np.linspace(initial_arr_time, final_arr_time, N)
@@ -72,6 +72,7 @@ def init_arrays(body1_name, body2_name, N = 100):
     if verbose:
         print(f"rel_ang_rate = {rel_ang_rate*12*month/(2*np.pi)} fraction/year")
         print(f"synodic period = {synodic_period/(12*month)} years")
+        print(f"buffer = {buffer_days} days")
         #print(f"Departure times = {dep_times_array/month}")
         #print(f"Arrival times = {arr_times_array/month}")
         
@@ -103,19 +104,18 @@ def porkchop(body2_name, body1_name = "earth", N = 70):
     delta_v_values = np.full((len(arr_times_array), len(dep_times_array)), fill_value=np.nan)
     
     b1_state_array = np.zeros((len(arr_times_array),6))
+    b2_state_array = np.zeros((len(dep_times_array),6))
 
-    for i_arr, arr_time in enumerate(arr_times_array):
-        b1_pos, b1_vel = ephem.return_planet_state("horizons", body1_name, arr_time)
-        b1_state_array[i_arr, 0:3] = b1_pos
-        b1_state_array[i_arr, 3:6] = b1_vel
+    for i_dep, dep_time in enumerate(dep_times_array):
+        b1_pos, b1_vel = ephem.return_planet_state("horizons", body1_name, dep_time)
+        b1_state_array[i_dep, 0:3] = b1_pos
+        b1_state_array[i_dep, 3:6] = b1_vel
     
     print("Created body 1 states")
     
     
-    b2_state_array = np.zeros((len(dep_times_array),6))
-    
-    for i_dep, dep_time in enumerate(dep_times_array):
-        b2_pos, b2_vel = ephem.return_planet_state("horizons", body2_name, dep_time)
+    for i_arr, arr_time in enumerate(arr_times_array):
+        b2_pos, b2_vel = ephem.return_planet_state("horizons", body2_name, arr_time)
         b2_state_array[i_arr, 0:3] = b2_pos
         b2_state_array[i_arr, 3:6] = b2_vel
 
@@ -163,6 +163,6 @@ def porkchop(body2_name, body1_name = "earth", N = 70):
         
 body1_name = "earth"
 body2_name = "mars"
-N = 40
+N = 60
 
 porkchop(body2_name, body1_name=body1_name, N=N)
