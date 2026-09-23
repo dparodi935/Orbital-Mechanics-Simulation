@@ -4,15 +4,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 import datetime as dt
 import constants
+import os
 
 G = constants.G
 mu = constants.solar_mass * G
 au = constants.au
 month = constants.day * 30.0
 verbose = False
+data_root = os.path.join("C:", "Users", "dp271", "Downloads")
+
 
 def circular_velocity(mu: float, r: np.ndarray):
     return np.sqrt(mu/r)
+        
         
 def return_transfer_orbit(position_1: np.ndarray, position_2: np.ndarray, tof: float):
     orbital_elements = lambert(mu, position_1, position_2, tof, direction="pro")
@@ -54,11 +58,12 @@ def porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, savefig=F
 
     plt.pcolormesh(dep_times_array, arr_times_array, delta_v_values)
     plt.colorbar()
-    plt.scatter(dep_times_array[min_idx % N], arr_times_array[min_idx // N], marker= 'x')#, label=f"{delta_v_values[min_idx%N,min_idx//N]}")
-    plt.xlabel("Departure Time (Months)")
-    plt.ylabel("Arrival Time (Months)")
-    plt.title("Total (Arr. + Dep.) Delta-V")
-    if savefig: plt.savefig("C:\\Users\\dp271\\Downloads\\porkchop.png",dpi=300)
+    plt.scatter(dep_times_array[min_idx % N], arr_times_array[min_idx // N], marker= 'x') 
+    plt.xlabel("Departure Time")
+    plt.ylabel("Arrival Time")
+    plt.title("Total Delta-V")
+    filepath = os.path.join(data_root,"porkchop.png")
+    if savefig: plt.savefig(filepath, dpi=300)
     plt.show()
 
 
@@ -68,7 +73,7 @@ def porkchop(body2_name, body1_name = "earth", N = 70):
     print("Created departure and arrival time arrays")
     
     n_check = int(N/10)
-    delta_v_values = np.full((len(arr_times_array),len(dep_times_array)), fill_value=np.nan)
+    delta_v_values = np.full((len(arr_times_array), len(dep_times_array)), fill_value=np.nan)
     
     
     for i_dep, dep_time in enumerate(dep_times_array):
@@ -96,8 +101,8 @@ def porkchop(body2_name, body1_name = "earth", N = 70):
                 arr_delta_v = np.linalg.norm(v_2 - b2_vel)
                 
                 delta_v = dep_delta_v + arr_delta_v
-         
                 delta_v_values[i_arr, i_dep] = delta_v
+    
     
     print(f"100% complete")
     
@@ -112,6 +117,6 @@ def porkchop(body2_name, body1_name = "earth", N = 70):
         
 body1_name = "earth"
 body2_name = "mars"
-N = 20
+N = 100
 
 porkchop(body2_name, body1_name=body1_name, N=N)
