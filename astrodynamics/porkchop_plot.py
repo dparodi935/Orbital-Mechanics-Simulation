@@ -24,7 +24,8 @@ def return_transfer_orbit(position_1: np.ndarray, position_2: np.ndarray, tof: f
 
 
 def caculate_buffer(b1_init_pos, b2_init_pos):
-    mars_buffer_days = 30 * 1
+    mars_buffer_days_initial = 30 * 1
+    mars_buffer_days_final = 30 * 15
     mars_sma = 1.523 * au
     earth_mars_a = 0.5*(au + mars_sma)
     a1 = np.linalg.norm(b1_init_pos)
@@ -34,14 +35,13 @@ def caculate_buffer(b1_init_pos, b2_init_pos):
     a_frac = a/earth_mars_a
     
     # Kepler's 3rd: T proportional to a^1.5
-    buffer_days = mars_buffer_days * (a_frac**1.5)
+    buffer_days_initial = mars_buffer_days_initial * (a_frac**1.5)
+    buffer_days_final = mars_buffer_days_final * (a_frac**1.5)
     
-    return buffer_days
+    return buffer_days_initial, buffer_days_final
 
 
-def init_arrays(body1_name, body2_name, N = 100):
-    initial_dep_time = dt.datetime(2017, 1, 1)
-    
+def init_arrays(initial_dep_time, body1_name, body2_name, N = 100):    
     script_dir = os.path.dirname(os.path.realpath(__file__))
     yaml_constants = utility.open_yaml_file(script_dir, "constants")
     
@@ -49,7 +49,7 @@ def init_arrays(body1_name, body2_name, N = 100):
     b1_sma, b1_period = b1_data["sma"], b1_data["period"]
     b2_sma, b2_period = b2_data["sma"], b2_data["period"]
     
-    buffer_days = caculate_buffer(b1_sma, b2_sma)
+    buffer_days_initial, buffer_days_final = caculate_buffer(b1_sma, b2_sma)
 
     body1_ang_rate = 2 * np.pi / b1_period
     body2_ang_rate = 2 * np.pi / b2_period
@@ -57,8 +57,8 @@ def init_arrays(body1_name, body2_name, N = 100):
     rel_ang_rate = abs(body1_ang_rate - body2_ang_rate)
     synodic_period = 2*np.pi/rel_ang_rate 
     syn_period_dt = dt.timedelta(seconds=synodic_period)
-    buffer_dt = dt.timedelta(days=buffer_days)
-    end_buffer_dt = dt.timedelta(days=15*30)
+    buffer_dt = dt.timedelta(days=buffer_days_initial)
+    end_buffer_dt = dt.timedelta(days=buffer_days_final)
     final_dep_time = initial_dep_time + syn_period_dt
     
     initial_arr_time = initial_dep_time + buffer_dt
@@ -72,7 +72,7 @@ def init_arrays(body1_name, body2_name, N = 100):
     if verbose:
         print(f"rel_ang_rate = {rel_ang_rate*12*month/(2*np.pi)} fraction/year")
         print(f"synodic period = {synodic_period/(12*month)} years")
-        print(f"buffer = {buffer_days} days")
+        print(f"buffer = {buffer_days_initial} days and {buffer_days_final} days")
         #print(f"Departure times = {dep_times_array/month}")
         #print(f"Arrival times = {arr_times_array/month}")
         
@@ -94,9 +94,9 @@ def porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, savefig=F
     plt.close()
 
 
-def porkchop(body2_name, body1_name = "earth", N = 70):
+def porkchop(initial_dep_time, body2_name, body1_name = "earth", N = 70):
     
-    dep_times_array, arr_times_array, delta_v_values = init_arrays(body1_name, body2_name, N)
+    dep_times_array, arr_times_array, delta_v_values = init_arrays(initial_dep_time, body1_name, body2_name, N)
     print("Created departure and arrival time arrays")
     
     n_check = int(N/10)
@@ -163,6 +163,8 @@ def porkchop(body2_name, body1_name = "earth", N = 70):
         
 body1_name = "earth"
 body2_name = "mars"
-N = 60
+initial_dep_time = dt.datetime(2017, 1, 1)
 
-porkchop(body2_name, body1_name=body1_name, N=N)
+N = 15
+
+porkchop(initial_dep_time, body2_name, body1_name=body1_name, N=N)
