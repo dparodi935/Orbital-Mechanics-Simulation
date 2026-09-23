@@ -66,11 +66,16 @@ def porkchop(body2_name, body1_name = "earth", N = 70):
     
     dep_times_array, arr_times_array, delta_v_values = init_arrays(body1_name, body2_name, N)
     print("Created departure and arrival time arrays")
+    
     n_check = int(N/10)
+    delta_v_values = np.full((len(arr_times_array),len(dep_times_array)), fill_value=np.nan)
+    
     
     for i_dep, dep_time in enumerate(dep_times_array):
         
-        if verbose and i_dep % n_check == 0: print(f"{i_dep}/{N} ", end="", flush=True)
+        if i_dep % n_check == 0: 
+            factor_done = int(100*i_dep/N)
+            print(f"{factor_done}% complete")
 
         b2_pos, b2_vel = ephem.return_planet_state("horizons", body2_name, dep_time)
         
@@ -81,7 +86,6 @@ def porkchop(body2_name, body1_name = "earth", N = 70):
                 
                 #check time of flight is physical
                 if tof <= 0:
-                    delta_v = np.nan 
                     continue
                 
                 b1_pos, b1_vel = ephem.return_planet_state("horizons", body1_name, arr_time)
@@ -92,14 +96,16 @@ def porkchop(body2_name, body1_name = "earth", N = 70):
                 arr_delta_v = np.linalg.norm(v_2 - b2_vel)
                 
                 delta_v = dep_delta_v + arr_delta_v
-                
-                dv_cap = 15000
-                if delta_v > dv_cap:
-                    delta_v = np.nan 
-       
-                    
-                delta_v_values[i_arr].append(delta_v)
-                
+         
+                delta_v_values[i_arr, i_dep] = delta_v
+    
+    print(f"100% complete")
+    
+    min_dv = np.nan_to_num(delta_v_values,nan=1e+99).min()
+    
+    dv_cap_factor = 2
+    dv_cap = min_dv * dv_cap_factor
+    delta_v_values[delta_v_values > dv_cap] = np.nan
         
     porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, savefig=True)
     
