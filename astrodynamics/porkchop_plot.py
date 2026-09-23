@@ -8,7 +8,7 @@ import constants
 G = constants.G
 mu = constants.solar_mass * G
 au = constants.au
-month = 60*60*24*30 * 1.0
+month = constants.day * 30.0
 verbose = False
 
 def circular_velocity(mu: float, r: np.ndarray):
@@ -20,7 +20,7 @@ def return_transfer_orbit(position_1: np.ndarray, position_2: np.ndarray, tof: f
 
 
 def init_arrays(body1_name, body2_name, N = 100):
-    buffer = 4.3 # months
+    buffer = 4.3 * 7 # weeks
     
     initial_dep_time = dt.datetime(2012, 1, 1)
 
@@ -49,24 +49,41 @@ def init_arrays(body1_name, body2_name, N = 100):
     return dep_times_array, arr_times_array, delta_v_values
 
 
-body1_name = "earth"
-body2_name = "mars"
-N = 70
+def porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, savefig=False):
+    min_idx = np.argmin(np.nan_to_num(delta_v_values, nan = 1e+99))
 
-dep_times_array, arr_times_array, delta_v_values = init_arrays(body1_name, body2_name, N)
+    plt.pcolormesh(dep_times_array, arr_times_array, delta_v_values)
+    plt.colorbar()
+    plt.scatter(dep_times_array[min_idx % N], arr_times_array[min_idx // N], marker= 'x')#, label=f"{delta_v_values[min_idx%N,min_idx//N]}")
+    plt.xlabel("Departure Time (Months)")
+    plt.ylabel("Arrival Time (Months)")
+    plt.title("Total (Arr. + Dep.) Delta-V")
+    if savefig: plt.savefig("C:\\Users\\dp271\\Downloads\\porkchop.png",dpi=300)
+    plt.show()
 
-for i_dep, dep_time in enumerate(dep_times_array):
-    n_check = int(N/10)
-    if verbose and i_dep % n_check == 0: print(f"{i_dep}/{N} ", end="", flush=True)
 
-    b2_pos, b2_vel = ephem.return_planet_state("horizons", body2_name, dep_time)
+def porkchop(body2_name, body1_name = "earth", N = 70):
     
-    for i_arr, arr_time in enumerate(arr_times_array):
-            
-            tof_dt = arr_time - dep_time
-            tof = tof_dt.total_seconds()
-            
-            if tof > 0:
+    dep_times_array, arr_times_array, delta_v_values = init_arrays(body1_name, body2_name, N)
+    print("Created departure and arrival time arrays")
+    n_check = int(N/10)
+    
+    for i_dep, dep_time in enumerate(dep_times_array):
+        
+        if verbose and i_dep % n_check == 0: print(f"{i_dep}/{N} ", end="", flush=True)
+
+        b2_pos, b2_vel = ephem.return_planet_state("horizons", body2_name, dep_time)
+        
+        for i_arr, arr_time in enumerate(arr_times_array):
+                
+                tof_dt = arr_time - dep_time
+                tof = tof_dt.total_seconds()
+                
+                #check time of flight is physical
+                if tof <= 0:
+                    delta_v = np.nan 
+                    continue
+                
                 b1_pos, b1_vel = ephem.return_planet_state("horizons", body1_name, arr_time)
                 
                 v_1, v_2 = lambert(mu, b1_pos, b2_pos, tof)
@@ -76,25 +93,19 @@ for i_dep, dep_time in enumerate(dep_times_array):
                 
                 delta_v = dep_delta_v + arr_delta_v
                 
-                if delta_v > 15000:
+                dv_cap = 15000
+                if delta_v > dv_cap:
                     delta_v = np.nan 
-                        
-                """except Exception as e:
-                    print("Exception called")
-                    delta_v = np.nan"""
-            else:
-                delta_v = np.nan
+       
+                    
+                delta_v_values[i_arr].append(delta_v)
                 
-            delta_v_values[i_arr].append(delta_v)
-            
+        
+    porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, savefig=True)
     
-min_idx = np.argmin(np.nan_to_num(delta_v_values, nan = 1e+99))
+        
+body1_name = "earth"
+body2_name = "mars"
+N = 20
 
-plt.pcolormesh(dep_times_array, arr_times_array, delta_v_values)
-plt.colorbar()
-plt.scatter(dep_times_array[min_idx % N], arr_times_array[min_idx // N], marker= 'x')#, label=f"{delta_v_values[min_idx%N,min_idx//N]}")
-plt.xlabel("Departure Time (Months)")
-plt.ylabel("Arrival Time (Months)")
-plt.title("Total (Arr. + Dep.) Delta-V")
-plt.savefig("C:\\Users\\dp271\\Downloads\\porkchop.png",dpi=300)
-plt.show()
+porkchop(body2_name, body1_name=body1_name, N=N)
