@@ -1,5 +1,4 @@
 import os, sys
-import datetime as dt
 import pandas as pd
 import numpy as np
 from scipy.optimize import newton
@@ -32,12 +31,6 @@ def read_table(table_choice: str) -> pd.DataFrame:
     csv_filepath = os.path.join(csv_folderpath, f"{csv_name}.csv")
     df = pd.read_csv(csv_filepath, index_col=0, header=[0,1])
     return df
-
-
-def return_jd_from_dt(datetime:dt.datetime) -> float:
-    ut = datetime.hour + datetime.minute/60 + datetime.second/(60**2)
-    jd = sidereal.return_jd(datetime.year , datetime.month, datetime.day, ut)
-    return jd
 
 
 def e_anomaly_kepler(e: float, M: float) -> float:
@@ -159,26 +152,24 @@ def orbital_elements_from_ephem(df: pd.DataFrame, planet: str, JD: float):
     return orbital_elements
 
 
-def state_from_ephem(table_choice: str, planet: str, datetime: dt.datetime):
+def state_from_ephem(table_choice:str, planet:str, jd:float):
     # calculate the gravitational parameter mu
     mu = constants.G * constants.solar_mass
 
     df = read_table(table_choice)
-    jd = return_jd_from_dt(datetime)
     orbital_elements = orbital_elements_from_ephem(df, planet, jd)
     position, velocity = basic.state_from_elements(mu, orbital_elements)
     
     return position, velocity
 
 
-def select_table(datetime: dt.datetime):
-    year = datetime.year 
-    if year < 2050 and year > 1800:
+def select_table(jd: float):
+    if jd < 2469807.50000 and jd > 2378496.50000:
         return "short"
-    elif year < 3000 and year > -3000:
+    elif jd < 2816787.50000 and jd > 625307.50000:
         return "long"
     else:
-        raise ValueError("Keplerian table for ephemerides does not support years outside the range 3000BC to 3000AD")
+        raise ValueError("Ephemerides do not support years outside the range 3000BC to 3000AD")
     
 
 def extract_horizons_ids():
@@ -214,27 +205,24 @@ def horizons_query_state(target_name:str, jd:float):
     return position, velocity
 
 
-def state_from_horizons(target:str, datetime:dt.datetime):
+def state_from_horizons(target:str, jd:float):
     """Returns the position and velocity of an object using JPL horizons 
 
     Args:
         target (str): Name of body of interest
-        datetime (dt.datetime): Time of interest
+        jd (float): Time of interest
 
     Returns:
         tuple (np.array, np.array): Position and velocity of body of interest in SI units, relative to the Sun
     """
-    jd = return_jd_from_dt(datetime)
     position, velocity = horizons_query_state(target, jd)
     return position, velocity
 
 
-def state_from_spice(planet:str, datetime:dt.datetime):
+def state_from_spice(planet:str, jd:float):
     knl_fpath = os.path.join(spice_folderpath, "de440s.bsp")
     kernel = SPK.open(knl_fpath)
-        
-    jd = return_jd_from_dt(datetime)
-    
+            
     ids_dict = extract_horizons_ids()
     
     sol_bcenter_id = 0
@@ -269,13 +257,13 @@ def state_from_spice(planet:str, datetime:dt.datetime):
     return position, velocity 
     
 
-def return_planet_state(source: str, planet:str, datetime: dt.datetime):
+def return_planet_state(source: str, planet:str, jd: float):
     """Return a planet's Cartesian position at a given time, either via jpl horizons or ephemerides table
 
     Args:
         source (str): Where to get state from. "horizons" and "tabulated_elements" for JPL Horizons and ephemerides table respectively
         planet (str): Name of the body of interest
-        datetime (dt.datetime): Time of interest
+        jd (float): Time of interest
 
     Raises:
         ValueError: _description_
@@ -285,15 +273,12 @@ def return_planet_state(source: str, planet:str, datetime: dt.datetime):
     """
     
     if source.lower() == "horizons":
-        position, velocity = state_from_horizons(planet, datetime)
+        position, velocity = state_from_horizons(planet, jd)
     elif source.lower() == "tabulated_elements":
-        table_choice = select_table(datetime=datetime)
-        position, velocity = state_from_ephem(table_choice, planet, datetime)
+        table_choice = select_table(jd=jd)
+        position, velocity = state_from_ephem(table_choice, planet, jd)
     elif source.lower() == "spice":
-        yr = datetime.year
-        if yr < 1850 or yr > 2150:
-            raise ValueError("For the use of SPICE kernels for planetary state retrieval, the year must be between 1849 and 2150")
-        position, velocity = state_from_spice(planet, datetime)
+        position, velocity = state_from_spice(planet, jd)
     else:
         raise ValueError(f"Invalid source '{source}' for planetary states")
     
