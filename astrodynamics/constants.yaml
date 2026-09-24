@@ -1,0 +1,48 @@
+SOL_DATA:
+  sun:
+    mass: 1.989e+30 # kilograms
+
+  mercury:
+    mass: 3.3011e+23 # kilograms
+    sma: 5.7909e+10 # metres
+    period: 7.6005e+06 # seconds
+
+  venus:
+    mass: 4.8675e+24
+    sma: 1.08209e+11
+    period: 1.9414e+07
+
+  earth:
+    mass: 5.9722e+24
+    sma: 1.495979e+11
+    period: 3.155812e+07
+
+  mars:
+    mass: 6.4171e+23
+    sma: 2.27923e+11
+    period: 5.9355e+07
+
+  jupiter:
+    mass: 1.8982e+27
+    sma: 7.7857e+11
+    period: 3.7434e+08
+
+  saturn:
+    mass: 5.6834e+26
+    sma: 1.43353e+12
+    period: 9.2960e+08
+
+  uranus:
+    mass: 8.6810e+25
+    sma: 2.87246e+12
+    period: 2.6512e+09
+
+  neptune:
+    mass: 1.0241e+26
+    sma: 4.49506e+12
+    period: 5.2003e+09
+
+  pluto:
+    mass: 1.3030e+22
+    sma: 5.90638e+12
+    period: 7.8244e+09
