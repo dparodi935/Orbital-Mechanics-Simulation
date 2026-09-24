@@ -10,7 +10,7 @@ G = constants.G
 mu = constants.solar_mass * G
 au = constants.au
 month = constants.day * 30.0
-verbose = True
+verbose = False
 data_root = os.path.join("C:\\", "Users", "dp271", "Downloads")
 
 
@@ -42,6 +42,8 @@ def caculate_buffer(b1_init_pos, b2_init_pos):
 
 
 def init_arrays(initial_dep_time, body1_name, body2_name, N = 100):    
+    import time
+    
     script_dir = os.path.dirname(os.path.realpath(__file__))
     yaml_constants = utility.open_yaml_file(script_dir, "constants")
     
@@ -73,9 +75,7 @@ def init_arrays(initial_dep_time, body1_name, body2_name, N = 100):
         print(f"rel_ang_rate = {rel_ang_rate*12*month/(2*np.pi)} fraction/year")
         print(f"synodic period = {synodic_period/(12*month)} years")
         print(f"buffer = {buffer_days_initial} days and {buffer_days_final} days")
-        #print(f"Departure times = {dep_times_array/month}")
-        #print(f"Arrival times = {arr_times_array/month}")
-        
+    
     return dep_times_array, arr_times_array, delta_v_values
 
 
@@ -95,7 +95,7 @@ def porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, savefig=F
 
 
 def porkchop(initial_dep_time, body2_name, body1_name = "earth", N = 70):
-    
+    source = "spice"
     dep_times_array, arr_times_array, delta_v_values = init_arrays(initial_dep_time, body1_name, body2_name, N)
     print("Created departure and arrival time arrays")
     
@@ -103,11 +103,12 @@ def porkchop(initial_dep_time, body2_name, body1_name = "earth", N = 70):
     if n_check == 0: n_check = 1
     delta_v_values = np.full((len(arr_times_array), len(dep_times_array)), fill_value=np.nan)
     
-    b1_state_array = np.zeros((len(arr_times_array),6))
-    b2_state_array = np.zeros((len(dep_times_array),6))
+    b1_state_array = np.zeros((len(arr_times_array),6), dtype=np.float64)
+    b2_state_array = np.zeros((len(dep_times_array),6), dtype=np.float64)
 
+    
     for i_dep, dep_time in enumerate(dep_times_array):
-        b1_pos, b1_vel = ephem.return_planet_state("horizons", body1_name, dep_time)
+        b1_pos, b1_vel = ephem.return_planet_state(source, body1_name, dep_time)
         b1_state_array[i_dep, 0:3] = b1_pos
         b1_state_array[i_dep, 3:6] = b1_vel
     
@@ -115,13 +116,14 @@ def porkchop(initial_dep_time, body2_name, body1_name = "earth", N = 70):
     
     
     for i_arr, arr_time in enumerate(arr_times_array):
-        b2_pos, b2_vel = ephem.return_planet_state("horizons", body2_name, arr_time)
+        b2_pos, b2_vel = ephem.return_planet_state(source, body2_name, arr_time)
         b2_state_array[i_arr, 0:3] = b2_pos
         b2_state_array[i_arr, 3:6] = b2_vel
 
     print("Created body 2 states")
    
-            
+    import time
+    t1 = time.time()    
     for i_dep, dep_time in enumerate(dep_times_array):
         
         if i_dep % n_check == 0: 
@@ -142,14 +144,21 @@ def porkchop(initial_dep_time, body2_name, body1_name = "earth", N = 70):
                 b2_pos = b2_state_array[i_arr, 0:3]
                 b2_vel = b2_state_array[i_arr, 3:6]
                 
-                v_1, v_2 = lambert(mu, b1_pos, b2_pos, tof)
+                try:
+                    v_1, v_2 = lambert(mu, b1_pos, b2_pos, tof)
+                except:
+                    delta_v_values[i_arr, i_dep] = np.nan
+                    continue    
+                
                 dep_delta_v = np.linalg.norm(v_1 - b1_vel)
                 arr_delta_v = np.linalg.norm(v_2 - b2_vel)
                 
                 delta_v = dep_delta_v + arr_delta_v
                 delta_v_values[i_arr, i_dep] = delta_v
+                  
+    t2 = time.time()
     
-    
+    print(f"time = {t2-t1}")
     print(f"100% complete")
     
     min_dv = np.nan_to_num(delta_v_values,nan=1e+99).min()
@@ -165,6 +174,6 @@ body1_name = "earth"
 body2_name = "mars"
 initial_dep_time = dt.datetime(2017, 1, 1)
 
-N = 15
+N = 500
 
 porkchop(initial_dep_time, body2_name, body1_name=body1_name, N=N)
