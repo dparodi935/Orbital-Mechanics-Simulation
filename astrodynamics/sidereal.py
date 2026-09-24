@@ -1,4 +1,5 @@
 import math
+import datetime as dt
 
 def return_j0(y: int, m: int, d: int):
     """Returns the Julian day number at 0h UT
@@ -25,6 +26,7 @@ def return_j0(y: int, m: int, d: int):
     
     j0 = 367 * y - math.trunc(b) + c
     return j0
+
 
 def return_jd(y: int, m: int, d: int, UT: float) -> float:
     j0 = return_j0(y,m,d)
@@ -92,3 +94,17 @@ def return_sidereal(UT: float, d: int, m: int, y: int, longitude: float) -> floa
     theta_G = return_gw_st(theta_G0, UT)
     theta = theta_G + longitude
     return theta
+
+def return_jd_from_dt(datetime:dt.datetime) -> float:
+    ut = datetime.hour + datetime.minute/60 + datetime.second/(60**2)
+    jd = return_jd(datetime.year , datetime.month, datetime.day, ut)
+    return jd
+
+
+J2000_DATETIME = dt.datetime(2000, 1, 1, 12, 0, 0)
+J2000_JD = 2451545.0
+
+def jd_to_datetime(jd):
+    """Converts a Julian Date float back to a Python datetime object."""
+    delta_days = jd - J2000_JD
+    return J2000_DATETIME + dt.timedelta(days=delta_days)
