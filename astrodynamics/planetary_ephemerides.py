@@ -1,18 +1,24 @@
 import os, sys
+import datetime as dt
 import pandas as pd
 import numpy as np
-import csv
 from scipy.optimize import newton
 from astroquery.jplhorizons import Horizons
+from jplephem.spk import SPK
 import sidereal, basic
 import constants
-import datetime as dt
 
-script_dir = os.path.dirname(os.path.realpath(__file__))
 
-sys.path.append(script_dir)
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
-csv_folderpath = os.path.join(script_dir, "planetary_orbital_elements")
+sys.path.append(SCRIPT_DIR)
+
+csv_folderpath = os.path.join(SCRIPT_DIR, "planetary_orbital_elements")
+spice_folderpath = os.path.join(SCRIPT_DIR, "spice_data")
+
+HORIZONS_IDS_FILENAME = 'horizon_ids'
+id_csv_filepath = os.path.join(SCRIPT_DIR, f'{HORIZONS_IDS_FILENAME}.csv')  
+    
 
 def read_table(table_choice: str) -> pd.DataFrame:
     if table_choice == "short":
@@ -181,11 +187,8 @@ def extract_horizons_ids():
     Returns:
         dict (str:str): Format is name:id 
     """
-    HORIZONS_IDS_FILENAME = 'horizon_ids'
-    id_csv_filepath = os.path.join(script_dir, f'{HORIZONS_IDS_FILENAME}.csv')  
     csv_df = pd.read_csv(id_csv_filepath)
     id_dict = dict(zip(csv_df['name'], csv_df['id']))
-        
     return id_dict
 
 
@@ -211,7 +214,7 @@ def horizons_query_state(target_name:str, jd:float):
     return position, velocity
 
 
-def state_from_horizons(target:str, datetime: dt.datetime):
+def state_from_horizons(target:str, datetime:dt.datetime):
     """Returns the position and velocity of an object using JPL horizons 
 
     Args:
@@ -226,11 +229,51 @@ def state_from_horizons(target:str, datetime: dt.datetime):
     return position, velocity
 
 
+def state_from_spice(planet:str, datetime:dt.datetime):
+    knl_fpath = os.path.join(spice_folderpath, "de440s.bsp")
+    kernel = SPK.open(knl_fpath)
+        
+    jd = return_jd_from_dt(datetime)
+    
+    ids_dict = extract_horizons_ids()
+    
+    sol_bcenter_id = 0
+    sun_id = 10
+    sun_position, sun_velocity = kernel[sol_bcenter_id, sun_id].compute_and_differentiate(jd)
+
+    if planet.lower() in ["earth", "moon"]: 
+        # this is because the kernel does not contain the direct Sun-Earth difference
+        # instead we string together the Sun-EM Barycenter and EM Barycenter-Earth states
+        # only earth's barycenter is significantly shifted
+        target_id = int(ids_dict[planet.lower()])
+        bcenter_name = "earth-moon barycenter"
+        target_bcent_id = int(ids_dict[bcenter_name])
+        
+        bc_position, bc_velocity = kernel[sol_bcenter_id, target_bcent_id].compute_and_differentiate(jd)  # kernel works in km, km/day
+        rel_bc_position, rel_bc_velocity = kernel[target_bcent_id, target_id].compute_and_differentiate(jd)
+        
+        rel_sbc_position = bc_position + rel_bc_position
+        rel_sbc_velocity = bc_velocity + rel_bc_velocity
+    else:
+        bcenter_name = f"{planet.lower()} barycenter"
+        target_id = int(ids_dict[bcenter_name])
+        rel_sbc_position, rel_sbc_velocity = kernel[sol_bcenter_id, target_id].compute_and_differentiate(jd)  # kernel works in km, km/day
+    
+    position_km = rel_sbc_position - sun_position
+    velocity_km_s = rel_sbc_velocity - sun_velocity
+    
+    # translate to m, m/s
+    km_m = 1000
+    day = constants.day
+    position, velocity = position_km* km_m, velocity_km_s * (km_m / day)
+    return position, velocity 
+    
+
 def return_planet_state(source: str, planet:str, datetime: dt.datetime):
     """Return a planet's Cartesian position at a given time, either via jpl horizons or ephemerides table
 
     Args:
-        source (str): Where to get state from. "horizons" and "keplerian_approx" for JPL Horizons and ephemerides table respectively
+        source (str): Where to get state from. "horizons" and "tabulated_elements" for JPL Horizons and ephemerides table respectively
         planet (str): Name of the body of interest
         datetime (dt.datetime): Time of interest
 
@@ -243,11 +286,16 @@ def return_planet_state(source: str, planet:str, datetime: dt.datetime):
     
     if source.lower() == "horizons":
         position, velocity = state_from_horizons(planet, datetime)
-        return position, velocity
-    elif source.lower() == "keplerian_approx":
+    elif source.lower() == "tabulated_elements":
         table_choice = select_table(datetime=datetime)
         position, velocity = state_from_ephem(table_choice, planet, datetime)
-        return position, velocity
+    elif source.lower() == "spice":
+        yr = datetime.year
+        if yr < 1850 or yr > 2150:
+            raise ValueError("For the use of SPICE kernels for planetary state retrieval, the year must be between 1849 and 2150")
+        position, velocity = state_from_spice(planet, datetime)
     else:
-        raise ValueError(f"Invalid source '{source}' for planetary ephemeridess") 
+        raise ValueError(f"Invalid source '{source}' for planetary states")
+    
+    return position, velocity 
     
