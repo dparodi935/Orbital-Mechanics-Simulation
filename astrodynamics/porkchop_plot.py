@@ -10,7 +10,7 @@ G = constants.G
 mu = constants.solar_mass * G
 au = constants.au
 month = constants.day * 30.0
-DATA_ROOT = os.path.join("C:\\", "Users", "dp271", "Downloads")
+DATA_ROOT = os.path.join("C:\\", "Users", "USERNAME", "Downloads")
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 yaml_constants = utility.open_yaml_file(SCRIPT_DIR, "constants")
@@ -99,7 +99,6 @@ def init_body_state_arrays(times_array, source, body_name):
     return b_state_array
  
 
-
 def porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, savefig=False):
     min_idx = np.argmin(np.nan_to_num(delta_v_values, nan = 1e+99))
     
@@ -118,7 +117,15 @@ def porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, savefig=F
     plt.close()
 
 
-def porkchop(initial_dep_time, body2_name, body1_name = "earth", N = 70):
+def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str = "earth", N:int = 400):
+    """Saves and creates a porkchop plot for travel between any two planets
+
+    Args:
+        initial_dep_time (dt.datetime): First time of departure 
+        body2_name (str): Name of the destination body 
+        body1_name (str, optional): Name of the body being departed from. Defaults to "earth".
+        N (int, optional): Number of dates on each axis. Defaults to 400.
+    """
     source = "spice"
     dv_cap_factor = 2
 
@@ -139,10 +146,10 @@ def porkchop(initial_dep_time, body2_name, body1_name = "earth", N = 70):
         b1_pos = b1_state_array[i_dep, 0:3]
 
         for i_arr, arr_time in enumerate(arr_times_array):
+            b2_pos = b2_state_array[i_arr, 0:3]
+            
             tof_jd = arr_time - dep_time
             tof = tof_jd * 86400.0
-            
-            b2_pos = b2_state_array[i_arr, 0:3]
             
             try:
                 v_1, v_2 = lambert(mu, b1_pos, b2_pos, tof)
@@ -161,7 +168,6 @@ def porkchop(initial_dep_time, body2_name, body1_name = "earth", N = 70):
     arr_delta_v_values = np.sqrt(np.sum((v_2_values-b2_state_array[:, np.newaxis, 3:6])**2, axis=2))
     
     delta_v_values = dep_delta_v_values + arr_delta_v_values
-    
     
     min_dv = np.nan_to_num(delta_v_values,nan=1e+99).min()
     dv_cap = min_dv * dv_cap_factor
