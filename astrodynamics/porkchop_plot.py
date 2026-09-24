@@ -3,21 +3,23 @@ import planetary_ephemerides as ephem
 import numpy as np
 import matplotlib.pyplot as plt
 import datetime as dt
-import constants, utility
+import constants, utility, sidereal
 import os
 
 G = constants.G
 mu = constants.solar_mass * G
 au = constants.au
 month = constants.day * 30.0
-verbose = False
-data_root = os.path.join("C:\\", "Users", "dp271", "Downloads")
+DATA_ROOT = os.path.join("C:\\", "Users", "dp271", "Downloads")
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+
+yaml_constants = utility.open_yaml_file(SCRIPT_DIR, "constants")
 
 
 def circular_velocity(mu: float, r: np.ndarray):
     return np.sqrt(mu/r)
-        
-        
+
+
 def return_transfer_orbit(position_1: np.ndarray, position_2: np.ndarray, tof: float):
     orbital_elements = lambert(mu, position_1, position_2, tof, direction="pro")
     return orbital_elements
@@ -38,49 +40,71 @@ def caculate_buffer(b1_init_pos, b2_init_pos):
     buffer_days_initial = mars_buffer_days_initial * (a_frac**1.5)
     buffer_days_final = mars_buffer_days_final * (a_frac**1.5)
     
-    return buffer_days_initial, buffer_days_final
+    buffer_days_initial_dt = dt.timedelta(days=buffer_days_initial)
+    buffer_days_final_dt = dt.timedelta(days=buffer_days_final)
+    return buffer_days_initial_dt, buffer_days_final_dt
 
 
-def init_arrays(initial_dep_time, body1_name, body2_name, N = 100):    
-    import time
-    
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-    yaml_constants = utility.open_yaml_file(script_dir, "constants")
-    
-    b1_data, b2_data = yaml_constants["SOL_DATA"][body1_name], yaml_constants["SOL_DATA"][body2_name]
-    b1_sma, b1_period = b1_data["sma"], b1_data["period"]
-    b2_sma, b2_period = b2_data["sma"], b2_data["period"]
-    
-    buffer_days_initial, buffer_days_final = caculate_buffer(b1_sma, b2_sma)
-
+def synodic_period(b1_period, b2_period):
     body1_ang_rate = 2 * np.pi / b1_period
     body2_ang_rate = 2 * np.pi / b2_period
     
     rel_ang_rate = abs(body1_ang_rate - body2_ang_rate)
     synodic_period = 2*np.pi/rel_ang_rate 
-    syn_period_dt = dt.timedelta(seconds=synodic_period)
-    buffer_dt = dt.timedelta(days=buffer_days_initial)
-    end_buffer_dt = dt.timedelta(days=buffer_days_final)
+    
+    synodic_period_dt = dt.timedelta(seconds=synodic_period)
+    return synodic_period_dt
+
+
+def init_time_arrays(initial_dep_time, body1_name, body2_name, N = 100):        
+    b1_data, b2_data = yaml_constants["SOL_DATA"][body1_name], yaml_constants["SOL_DATA"][body2_name]
+    b1_sma, b1_period = b1_data["sma"], b1_data["period"]
+    b2_sma, b2_period = b2_data["sma"], b2_data["period"]
+    
+    syn_period_dt = synodic_period(b1_period, b2_period)
+    
     final_dep_time = initial_dep_time + syn_period_dt
     
+    buffer_dt, end_buffer_dt = caculate_buffer(b1_sma, b2_sma)
     initial_arr_time = initial_dep_time + buffer_dt
     final_arr_time = final_dep_time + end_buffer_dt
 
-    dep_times_array = np.linspace(initial_dep_time, final_dep_time, N)
-    arr_times_array = np.linspace(initial_arr_time, final_arr_time, N)
-
-    delta_v_values = [[] for i in range(N)]
-
-    if verbose:
-        print(f"rel_ang_rate = {rel_ang_rate*12*month/(2*np.pi)} fraction/year")
-        print(f"synodic period = {synodic_period/(12*month)} years")
-        print(f"buffer = {buffer_days_initial} days and {buffer_days_final} days")
+    init_dep_jd, final_dep_jd = sidereal.return_jd_from_dt(initial_dep_time), sidereal.return_jd_from_dt(final_dep_time)
+    init_arr_jd, final_arr_jd = sidereal.return_jd_from_dt(initial_arr_time), sidereal.return_jd_from_dt(final_arr_time)
     
-    return dep_times_array, arr_times_array, delta_v_values
+    dep_times_array_jd = np.linspace(init_dep_jd, final_dep_jd, N)
+    arr_times_array_jd = np.linspace(init_arr_jd, final_arr_jd, N)
+        
+    return dep_times_array_jd, arr_times_array_jd
+
+
+def init_vel_arrays(dep_times_array, arr_times_array):
+    N_arr, N_dep = len(arr_times_array), len(dep_times_array)
+    v_1_values = np.full((N_arr, N_dep, 3), fill_value=np.nan)
+    v_2_values = np.full((N_arr, N_dep, 3), fill_value=np.nan)
+    dep_delta_v_values = np.full((N_arr, N_dep), fill_value=np.nan)
+    arr_delta_v_values = np.full((N_arr, N_dep), fill_value=np.nan)
+    delta_v_values = np.full((N_arr, N_dep), fill_value=np.nan)
+    return v_1_values, v_2_values, dep_delta_v_values, arr_delta_v_values, delta_v_values
+
+
+def init_body_state_arrays(times_array, source, body_name):
+    b_state_array = np.zeros((len(times_array),6), dtype=np.float64)
+
+    for i, time in enumerate(times_array):
+        b_pos, b_vel = ephem.return_planet_state(source, body_name, time)
+        b_state_array[i, 0:3] = b_pos
+        b_state_array[i, 3:6] = b_vel
+        
+    return b_state_array
+ 
 
 
 def porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, savefig=False):
     min_idx = np.argmin(np.nan_to_num(delta_v_values, nan = 1e+99))
+    
+    dep_times_array = [sidereal.jd_to_datetime(jd) for jd in dep_times_array]
+    arr_times_array = [sidereal.jd_to_datetime(jd) for jd in arr_times_array]
 
     plt.pcolormesh(dep_times_array, arr_times_array, delta_v_values)
     plt.colorbar()
@@ -88,7 +112,7 @@ def porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, savefig=F
     plt.xlabel("Departure Time")
     plt.ylabel("Arrival Time")
     plt.title("Total Delta-V")
-    filepath = os.path.join(data_root,"porkchop.png")
+    filepath = os.path.join(DATA_ROOT,"porkchop.png")
     if savefig: plt.savefig(filepath, dpi=300)
     plt.show()
     plt.close()
@@ -96,77 +120,53 @@ def porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, savefig=F
 
 def porkchop(initial_dep_time, body2_name, body1_name = "earth", N = 70):
     source = "spice"
-    dep_times_array, arr_times_array, delta_v_values = init_arrays(initial_dep_time, body1_name, body2_name, N)
-    print("Created departure and arrival time arrays")
-    
+    dv_cap_factor = 2
+
     n_check = int(N/10)
     if n_check == 0: n_check = 1
-    delta_v_values = np.full((len(arr_times_array), len(dep_times_array)), fill_value=np.nan)
     
-    b1_state_array = np.zeros((len(arr_times_array),6), dtype=np.float64)
-    b2_state_array = np.zeros((len(dep_times_array),6), dtype=np.float64)
+    dep_times_array, arr_times_array = init_time_arrays(initial_dep_time, body1_name, body2_name, N)
+    print("Created departure and arrival time arrays")
+    
+    v_1_values, v_2_values, dep_delta_v_values, arr_delta_v_values, delta_v_values = init_vel_arrays(dep_times_array, arr_times_array)
+    
+    b1_state_array = init_body_state_arrays(dep_times_array, source, body1_name)
+    b2_state_array = init_body_state_arrays(arr_times_array, source, body2_name)
 
+    print("Created body states")
     
     for i_dep, dep_time in enumerate(dep_times_array):
-        b1_pos, b1_vel = ephem.return_planet_state(source, body1_name, dep_time)
-        b1_state_array[i_dep, 0:3] = b1_pos
-        b1_state_array[i_dep, 3:6] = b1_vel
-    
-    print("Created body 1 states")
-    
-    
-    for i_arr, arr_time in enumerate(arr_times_array):
-        b2_pos, b2_vel = ephem.return_planet_state(source, body2_name, arr_time)
-        b2_state_array[i_arr, 0:3] = b2_pos
-        b2_state_array[i_arr, 3:6] = b2_vel
-
-    print("Created body 2 states")
-   
-    import time
-    t1 = time.time()    
-    for i_dep, dep_time in enumerate(dep_times_array):
-        
-        if i_dep % n_check == 0: 
-            factor_done = int(100*i_dep/N)
-            print(f"{factor_done}% complete")
-
         b1_pos = b1_state_array[i_dep, 0:3]
-        b1_vel = b1_state_array[i_dep, 3:6]
 
         for i_arr, arr_time in enumerate(arr_times_array):
-                tof_dt = arr_time - dep_time
-                tof = tof_dt.total_seconds()
+            tof_jd = arr_time - dep_time
+            tof = tof_jd * 86400.0
+            
+            b2_pos = b2_state_array[i_arr, 0:3]
+            
+            try:
+                v_1, v_2 = lambert(mu, b1_pos, b2_pos, tof)
+            except:
+                v_1 = np.full(3, np.nan)
+                v_2 = np.full(3, np.nan)
                 
-                #check time of flight is physical
-                if tof <= 0:
-                    continue
+            v_1_values[i_arr, i_dep] = v_1
+            v_2_values[i_arr, i_dep] = v_2
                 
-                b2_pos = b2_state_array[i_arr, 0:3]
-                b2_vel = b2_state_array[i_arr, 3:6]
-                
-                try:
-                    v_1, v_2 = lambert(mu, b1_pos, b2_pos, tof)
-                except:
-                    delta_v_values[i_arr, i_dep] = np.nan
-                    continue    
-                
-                dep_delta_v = np.linalg.norm(v_1 - b1_vel)
-                arr_delta_v = np.linalg.norm(v_2 - b2_vel)
-                
-                delta_v = dep_delta_v + arr_delta_v
-                delta_v_values[i_arr, i_dep] = delta_v
-                  
-    t2 = time.time()
+        if i_dep % n_check == 0: 
+            factor_done = int(100*(i_dep)/N) + 10
+            print(f"{factor_done}% complete")
+                      
+    dep_delta_v_values = np.sqrt(np.sum((v_1_values-b1_state_array[:, 3:6])**2, axis=2))
+    arr_delta_v_values = np.sqrt(np.sum((v_2_values-b2_state_array[:, np.newaxis, 3:6])**2, axis=2))
     
-    print(f"time = {t2-t1}")
-    print(f"100% complete")
+    delta_v_values = dep_delta_v_values + arr_delta_v_values
+    
     
     min_dv = np.nan_to_num(delta_v_values,nan=1e+99).min()
-    
-    dv_cap_factor = 2
     dv_cap = min_dv * dv_cap_factor
     delta_v_values[delta_v_values > dv_cap] = np.nan
-        
+
     porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, savefig=True)
     
         
@@ -174,6 +174,6 @@ body1_name = "earth"
 body2_name = "mars"
 initial_dep_time = dt.datetime(2017, 1, 1)
 
-N = 500
+N = 50
 
 porkchop(initial_dep_time, body2_name, body1_name=body1_name, N=N)
