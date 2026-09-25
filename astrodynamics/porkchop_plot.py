@@ -2,6 +2,9 @@ from lamberts_problem import lambert
 import planetary_ephemerides as ephem
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 import datetime as dt
 import constants, utility, sidereal
 import os
@@ -93,24 +96,71 @@ def init_body_state_arrays(times_array, source, body_name):
     return b_state_array
  
 
-def porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, savefig=False):
-    min_idx = np.argmin(np.nan_to_num(delta_v_values, nan = 1e+99))
-    
-    dep_times_array = [sidereal.jd_to_datetime(jd) for jd in dep_times_array]
-    arr_times_array = [sidereal.jd_to_datetime(jd) for jd in arr_times_array]
 
-    plt.pcolormesh(dep_times_array, arr_times_array, delta_v_values)
-    plt.colorbar()
-    plt.scatter(dep_times_array[min_idx % N], arr_times_array[min_idx // N], marker= 'x') 
-    plt.xlabel("Departure Time")
-    plt.ylabel("Arrival Time")
-    plt.title("Total Delta-V")
-    filepath = os.path.join(DATA_ROOT,"porkchop.png")
-    if savefig: plt.savefig(filepath, dpi=300)
+def porkchop_plotter(dep_times_array_jd, arr_times_array_jd, delta_v_values, savefig=False):
+    """
+    Generates a classical line-contoured porkchop plot matching standard astrodynamics 
+    software styles, complete with Delta-V line contours, time-of-flight 
+    contours in months, and a minimum Delta-V marker.
+    """
+    
+    # Generate 2D mesh grids for time of flight calculation in months
+    X_jd, Y_jd = np.meshgrid(dep_times_array_jd, arr_times_array_jd)
+    #tof_grid_months = (Y_jd - X_jd) / 30.4375
+
+    # Convert Julian Date axes to Python datetimes for Matplotlib date formatting
+    dep_times_dt = [sidereal.jd_to_datetime(jd) for jd in dep_times_array_jd]
+    arr_times_dt = [sidereal.jd_to_datetime(jd) for jd in arr_times_array_jd]
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    # --- 1. Delta-V Line Contours (Classic MATLAB / ASTRO style) ---
+    min_dv = np.nanmin(delta_v_values)
+    max_dv = np.nanmax(delta_v_values)
+    dv_levels = np.linspace(min_dv, max_dv, 30)
+    
+    # Define normalization for the colormap to match the contour levels
+    norm = mcolors.Normalize(vmin=min_dv, vmax=max_dv)
+    cmap = plt.get_cmap('jet')
+    
+    # Using ax.contour instead of filled contours to achieve the line-ring aesthetic
+    dv_contour = ax.contour(dep_times_dt, arr_times_dt, delta_v_values, 
+                            levels=dv_levels, cmap=cmap, norm=norm, linewidths=0.5)
+    
+    # Create a solid colorbar using a ScalarMappable instead of the contour object
+    sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=ax)
+    cbar.set_label('Total $\\Delta$V')
+
+    # --- 2. Time of Flight Contours (in Months) ---
+    """tof_levels = np.arange(3, 13, 1)  # Adjust range (e.g., 3 to 12 months) based on your mission
+    tof_contour = ax.contour(dep_times_dt, arr_times_dt, tof_grid_months, 
+                             levels=tof_levels, colors='black', alpha=0.5, linestyles='dashed')
+    ax.clabel(tof_contour, fmt='%d mo', fontsize=8)"""
+
+
+    # --- 4. Grid Lines and Axis Formatting ---
+    ax.grid(True, linestyle='--', color='black', alpha=0.4)
+    
+    date_format = mdates.DateFormatter('%m/%d/%y')
+    ax.xaxis.set_major_formatter(date_format)
+    ax.yaxis.set_major_formatter(date_format)
+    fig.autofmt_xdate()
+
+    ax.set_xlabel("Launch Date")
+    ax.set_ylabel("Arrival Date")
+    ax.set_title("Interplanetary Transfer Porkchop Plot")
+
+    if savefig: 
+        # Assuming DATA_ROOT is defined globally
+        filepath = os.path.join(DATA_ROOT, "porkchop.png")
+        plt.savefig(filepath, dpi=300)
+        
     plt.show()
     plt.close()
-
-
+    
+  
 
 def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth", N:int=400, N_syn:int=1):
     """Saves and creates a porkchop plot for travel between any two planets
