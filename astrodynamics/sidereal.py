@@ -1,6 +1,11 @@
 import math
 import datetime as dt
 
+J2000_DATETIME = dt.datetime(2000, 1, 1, 12, 0, 0)
+J2000_JD = 2451545.0
+JD_SECONDS = 86400.0
+
+
 def return_j0(y: int, m: int, d: int):
     """Returns the Julian day number at 0h UT
 
@@ -32,6 +37,7 @@ def return_jd(y: int, m: int, d: int, UT: float) -> float:
     j0 = return_j0(y,m,d)
     jd = j0 + UT/24
     return jd
+
 
 def return_t0(JD: int) -> float:
     """Returns the time to JD from J200 in terms of Julian centuries
@@ -95,16 +101,14 @@ def return_sidereal(UT: float, d: int, m: int, y: int, longitude: float) -> floa
     theta = theta_G + longitude
     return theta
 
-def return_jd_from_dt(datetime:dt.datetime) -> float:
-    ut = datetime.hour + datetime.minute/60 + datetime.second/(60**2)
-    jd = return_jd(datetime.year , datetime.month, datetime.day, ut)
-    return jd
+
+def datetime_to_jd(datetime:dt.datetime) -> float:
+    """Converst from Python datetime objects to Julian Days"""
+    delta_dt = datetime - J2000_DATETIME    
+    return J2000_JD + delta_dt.seconds()/JD_SECONDS
 
 
-J2000_DATETIME = dt.datetime(2000, 1, 1, 12, 0, 0)
-J2000_JD = 2451545.0
-
-def jd_to_datetime(jd):
+def jd_to_datetime(jd:float) -> dt.datetime:
     """Converts a Julian Date float back to a Python datetime object."""
     delta_days = jd - J2000_JD
     return J2000_DATETIME + dt.timedelta(days=delta_days)
