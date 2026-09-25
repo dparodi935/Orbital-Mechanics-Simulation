@@ -123,7 +123,7 @@ def return_lower_z_bound(r_1, r_2, delta_t, mu, direction):
     return a
     
     
-def lambert(mu, r_1, r_2, delta_t, direction="pro"):
+def lambert(mu, r_1, r_2, delta_t, direction="pro", xtol=1e-12):
     """Return the final and inital velocity of a trajectory given two positions and a specified time of flight
 
     Args:
@@ -132,6 +132,7 @@ def lambert(mu, r_1, r_2, delta_t, direction="pro"):
         r_2 (np.ndarray): Array of shape (3,) representing the final position of the body in Cartesian coordinates. Metres
         delta_t (float): Time of flight between the  two specified positions. Seconds
         direction (str, optional): Given [0,0,1] as "North", the direction of the orbit, prograde or retrograde. Defaults to "pro".
+        xtol (float): Precision variable for Lambert's solver
 
     Returns:
         tuple: Returns tuple of shape (2,) containing the velocities at the initial and final velocity: (v_1, v_2). m/s
@@ -139,7 +140,7 @@ def lambert(mu, r_1, r_2, delta_t, direction="pro"):
     b_bound = 4.0 * (np.pi ** 2)
     z_0 = return_lower_z_bound(r_1, r_2, delta_t, mu, direction)
     
-    z = brentq(f=lambda x: F(x, r_1, r_2, delta_t, mu, direction), a=z_0+1e-6, b=b_bound-1e-6)
+    z = brentq(f=lambda x: F(x, r_1, r_2, delta_t, mu, direction), a=z_0+1e-6, b=b_bound-1e-6, xtol=xtol)
 
     S = return_S(z)
     C = return_C(z)

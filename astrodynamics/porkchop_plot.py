@@ -203,7 +203,7 @@ def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth
                 continue
             
             try:
-                v_1, v_2 = lambert(mu, b1_pos, b2_pos, tof)
+                v_1, v_2 = lambert(mu, b1_pos, b2_pos, tof, xtol=1e-4)
             except:
                 continue
                 
