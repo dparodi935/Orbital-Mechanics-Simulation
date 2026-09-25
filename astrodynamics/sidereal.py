@@ -105,7 +105,7 @@ def return_sidereal(UT: float, d: int, m: int, y: int, longitude: float) -> floa
 def datetime_to_jd(datetime:dt.datetime) -> float:
     """Converst from Python datetime objects to Julian Days"""
     delta_dt = datetime - J2000_DATETIME    
-    return J2000_JD + delta_dt.seconds()/JD_SECONDS
+    return J2000_JD + delta_dt.total_seconds()/JD_SECONDS
 
 
 def jd_to_datetime(jd:float) -> dt.datetime:
