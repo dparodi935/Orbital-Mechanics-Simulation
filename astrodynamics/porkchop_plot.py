@@ -56,12 +56,12 @@ def synodic_period(b1_period, b2_period):
     return synodic_period_dt
 
 
-def init_time_arrays(initial_dep_time, body1_name, body2_name, N = 100):        
+def init_time_arrays(initial_dep_time, body1_name, body2_name, N=100, N_syn=1):        
     b1_data, b2_data = yaml_constants["SOL_DATA"][body1_name], yaml_constants["SOL_DATA"][body2_name]
     b1_sma, b1_period = b1_data["sma"], b1_data["period"]
     b2_sma, b2_period = b2_data["sma"], b2_data["period"]
     
-    syn_period_dt = synodic_period(b1_period, b2_period)
+    syn_period_dt = synodic_period(b1_period, b2_period) * N_syn
     
     final_dep_time = initial_dep_time + syn_period_dt
     
@@ -111,7 +111,8 @@ def porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, savefig=F
     plt.close()
 
 
-def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str = "earth", N:int = 400):
+
+def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth", N:int=400, N_syn:int=1):
     """Saves and creates a porkchop plot for travel between any two planets
 
     Args:
@@ -120,36 +121,41 @@ def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str = "ear
         body1_name (str, optional): Name of the body being departed from. Defaults to "earth".
         N (int, optional): Number of dates on each axis. Defaults to 400.
     """
-    source = "spice"
-    dv_cap_factor = 2
+    SOURCE = "spice"
+    DV_CAP_FACTOR = 2
 
     n_check = int(N/10)
     if n_check == 0: n_check = 1
     
-    dep_times_array, arr_times_array = init_time_arrays(initial_dep_time, body1_name, body2_name, N)
+    dep_times_array, arr_times_array = init_time_arrays(initial_dep_time, body1_name, body2_name, N, N_syn)
     print("Created departure and arrival time arrays")
     
     v_1_values, v_2_values, dep_delta_v_values, arr_delta_v_values, delta_v_values = init_vel_arrays(dep_times_array, arr_times_array)
     
-    b1_state_array = init_body_state_arrays(dep_times_array, source, body1_name)
-    b2_state_array = init_body_state_arrays(arr_times_array, source, body2_name)
+    b1_state_array = init_body_state_arrays(dep_times_array, SOURCE, body1_name)
+    b2_state_array = init_body_state_arrays(arr_times_array, SOURCE, body2_name)
 
+    b1_positions = b1_state_array[:, 0:3]
+    b2_positions = b2_state_array[:, 0:3]
+    
     print("Created body states")
     
     for i_dep, dep_time in enumerate(dep_times_array):
-        b1_pos = b1_state_array[i_dep, 0:3]
+        b1_pos = b1_positions[i_dep]
 
         for i_arr, arr_time in enumerate(arr_times_array):
-            b2_pos = b2_state_array[i_arr, 0:3]
+            b2_pos = b2_positions[i_arr]
             
             tof_jd = arr_time - dep_time
-            tof = tof_jd * 86400.0
+            tof = tof_jd * sidereal.JD_SECONDS
+            
+            if tof <= 0:
+                continue
             
             try:
                 v_1, v_2 = lambert(mu, b1_pos, b2_pos, tof)
             except:
-                v_1 = np.full(3, np.nan)
-                v_2 = np.full(3, np.nan)
+                continue
                 
             v_1_values[i_arr, i_dep] = v_1
             v_2_values[i_arr, i_dep] = v_2
@@ -164,7 +170,7 @@ def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str = "ear
     delta_v_values = dep_delta_v_values + arr_delta_v_values
     
     min_dv = np.nan_to_num(delta_v_values,nan=1e+99).min()
-    dv_cap = min_dv * dv_cap_factor
+    dv_cap = min_dv * DV_CAP_FACTOR
     delta_v_values[delta_v_values > dv_cap] = np.nan
 
     porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, savefig=True)
@@ -174,6 +180,7 @@ body1_name = "earth"
 body2_name = "mars"
 initial_dep_time = dt.datetime(2017, 1, 1)
 
-N = 20
+N = 500
+N_syn = 1
 
-porkchop(initial_dep_time, body2_name, body1_name=body1_name, N=N)
+porkchop(initial_dep_time, body2_name, body1_name=body1_name, N=N, N_syn=N_syn)
