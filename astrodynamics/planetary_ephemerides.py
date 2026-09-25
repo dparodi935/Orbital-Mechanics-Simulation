@@ -1,5 +1,6 @@
 import os, sys
 import pandas as pd
+from numpy.typing import NDArray
 import numpy as np
 from scipy.optimize import newton
 from astroquery.jplhorizons import Horizons
@@ -16,8 +17,7 @@ csv_folderpath = os.path.join(SCRIPT_DIR, "planetary_orbital_elements")
 spice_folderpath = os.path.join(SCRIPT_DIR, "spice_data")
 
 HORIZONS_IDS_FILENAME = 'horizon_ids'
-id_csv_filepath = os.path.join(SCRIPT_DIR, f'{HORIZONS_IDS_FILENAME}.csv')  
-    
+ID_CSV_FPATH = os.path.join(SCRIPT_DIR, f'{HORIZONS_IDS_FILENAME}.csv')  
 
 def read_table(table_choice: str) -> pd.DataFrame:
     if table_choice == "short":
@@ -152,15 +152,24 @@ def orbital_elements_from_ephem(df: pd.DataFrame, planet: str, JD: float):
     return orbital_elements
 
 
-def state_from_ephem(table_choice:str, planet:str, jd:float):
+def state_from_ephem(planet:str, jd_array:NDArray):
+    jd_idx = np.argmax(abs(jd_array-sidereal.J2000_JD))
+    jd_limit =  jd_array[jd_idx]
+    table_choice = select_table(jd=jd_limit)
+
     # calculate the gravitational parameter mu
     mu = constants.G * constants.solar_mass
 
+    state_array = np.zeros((len(jd_array),6), dtype=np.float64)
     df = read_table(table_choice)
-    orbital_elements = orbital_elements_from_ephem(df, planet, jd)
-    position, velocity = basic.state_from_elements(mu, orbital_elements)
     
-    return position, velocity
+    for i, jd in enumerate(jd_array):
+        orbital_elements = orbital_elements_from_ephem(df, planet, jd)
+        position, velocity = basic.state_from_elements(mu, orbital_elements)
+        state_array[i, 0:3] = position
+        state_array[i, 3:6] = velocity
+    
+    return state_array
 
 
 def select_table(jd: float):
@@ -178,7 +187,7 @@ def extract_horizons_ids():
     Returns:
         dict (str:str): Format is name:id 
     """
-    csv_df = pd.read_csv(id_csv_filepath)
+    csv_df = pd.read_csv(ID_CSV_FPATH)
     id_dict = dict(zip(csv_df['name'], csv_df['id']))
     return id_dict
 
@@ -205,82 +214,140 @@ def horizons_query_state(target_name:str, jd:float):
     return position, velocity
 
 
-def state_from_horizons(target:str, jd:float):
+def state_from_horizons(target:str, jd_array:float):
     """Returns the position and velocity of an object using JPL horizons 
 
     Args:
         target (str): Name of body of interest
-        jd (float): Time of interest
+        jd_array (NDarray): Time of interest
 
     Returns:
-        tuple (np.array, np.array): Position and velocity of body of interest in SI units, relative to the Sun
+        NDarray, NDarray: Position and velocity of body of interest in SI units, relative to the Sun
     """
-    position, velocity = horizons_query_state(target, jd)
-    return position, velocity
+    HORIZONS_CAP = 50
+    if len(jd_array) > HORIZONS_CAP:
+        raise ValueError(f"Only up to {HORIZONS_CAP} queries can be made to JPL horizons in a single go")
+    state_array = np.zeros((len(jd_array),6), dtype=np.float64)
+    for i, jd in enumerate(jd_array):
+        position, velocity = horizons_query_state(target, jd)
+        state_array[i, 0:3] = position
+        state_array[i, 3:6] = velocity
+    return state_array
 
 
-def state_from_spice(planet:str, jd:float):
-    knl_fpath = os.path.join(spice_folderpath, "de440s.bsp")
+def retrieve_SPK_kernel(spk_name):
+    knl_fpath = os.path.join(spice_folderpath, f"{spk_name}.bsp")
     kernel = SPK.open(knl_fpath)
-            
-    ids_dict = extract_horizons_ids()
-    
-    sol_bcenter_id = 0
-    sun_id = 10
-    sun_position, sun_velocity = kernel[sol_bcenter_id, sun_id].compute_and_differentiate(jd)
+    return kernel
 
-    if planet.lower() in ["earth", "moon"]: 
+
+def return_sbc_state(kernel, ids_dict, body_raw, jd_array):
+    """Returns position of input body relative to the solar system barycenter
+
+    Args:
+        kernel (_type_): _description_
+        ids_dict (_type_): _description_
+        body_raw (_type_): _description_
+        jd (_type_): _description_
+
+    Returns:
+        _type_: Position, velocity relative to barycenter in units of km and km/day
+    """
+    body = body_raw.lower()
+    sol_bcenter_id = int(ids_dict["solar system barycenter"])
+
+    if body in ["earth", "moon"]: 
         # this is because the kernel does not contain the direct Sun-Earth difference
         # instead we string together the Sun-EM Barycenter and EM Barycenter-Earth states
         # only earth's barycenter is significantly shifted
-        target_id = int(ids_dict[planet.lower()])
+        target_id = int(ids_dict[body])
         bcenter_name = "earth-moon barycenter"
         target_bcent_id = int(ids_dict[bcenter_name])
         
-        bc_position, bc_velocity = kernel[sol_bcenter_id, target_bcent_id].compute_and_differentiate(jd)  # kernel works in km, km/day
-        rel_bc_position, rel_bc_velocity = kernel[target_bcent_id, target_id].compute_and_differentiate(jd)
+        bc_position, bc_velocity = kernel[sol_bcenter_id, target_bcent_id].compute_and_differentiate(jd_array)  # kernel works in km, km/day
+        rel_bc_position, rel_bc_velocity = kernel[target_bcent_id, target_id].compute_and_differentiate(jd_array)
+        
+        bc_position, bc_velocity = bc_position, bc_velocity
+        rel_bc_position, rel_bc_velocity = rel_bc_position, rel_bc_velocity
         
         rel_sbc_position = bc_position + rel_bc_position
         rel_sbc_velocity = bc_velocity + rel_bc_velocity
+        
+    elif body == "sun":
+        sun_id = int(ids_dict[body])
+        rel_sbc_position, rel_sbc_velocity = kernel[sol_bcenter_id, sun_id].compute_and_differentiate(jd_array) # kernel works in km, km/day
+        
     else:
-        bcenter_name = f"{planet.lower()} barycenter"
+        bcenter_name = f"{body} barycenter"
         target_id = int(ids_dict[bcenter_name])
-        rel_sbc_position, rel_sbc_velocity = kernel[sol_bcenter_id, target_id].compute_and_differentiate(jd)  # kernel works in km, km/day
+        rel_sbc_position, rel_sbc_velocity = kernel[sol_bcenter_id, target_id].compute_and_differentiate(jd_array)  # kernel works in km, km/day
     
-    position_km = rel_sbc_position - sun_position
-    velocity_km_s = rel_sbc_velocity - sun_velocity
-    
+    # transpose from (3, N) to (N, 3)
+    rel_sbc_position, rel_sbc_velocity = rel_sbc_position.T, rel_sbc_velocity.T
+     
     # translate to m, m/s
     km_m = 1000
     day = constants.day
-    position, velocity = position_km* km_m, velocity_km_s * (km_m / day)
-    return position, velocity 
+    rel_sbc_position_si, rel_sbc_velocity_si = rel_sbc_position* km_m, rel_sbc_velocity * (km_m / day)
+    
+    return rel_sbc_position_si, rel_sbc_velocity_si
+
+
+def get_kernel_boundaries(kernel):
+    start_jd = min(segment.start_jd for segment in kernel.segments)
+    end_jd = min(segment.end_jd for segment in kernel.segments)
+    return start_jd, end_jd
+
+
+def state_from_spice(planet:str, jd_array:NDArray):
+    spk_name = "de440s"
+    
+    kernel = retrieve_SPK_kernel(spk_name)    
+    ids_dict = extract_horizons_ids()
+    
+    start_jd, end_jd = get_kernel_boundaries(kernel)
+    
+    if jd_array[0] < start_jd or jd_array[-1] > end_jd:
+        raise ValueError(f"Request Julian Days are not contained within SPICE kernel {spk_name}")
+    
+    sun_position_array, sun_velocity_array = return_sbc_state(kernel, ids_dict, "sun", jd_array)
+    rel_sbc_position_array, rel_sbc_velocity_array = return_sbc_state(kernel, ids_dict, planet, jd_array)
+    
+    position_array = rel_sbc_position_array - sun_position_array
+    velocity_array = rel_sbc_velocity_array - sun_velocity_array
+    
+    # 2 x (N, 3) -> (N, 6)
+    state_array = np.hstack((position_array, velocity_array)) 
+    
+    kernel.close()
+    
+    return state_array 
     
 
-def return_planet_state(source: str, planet:str, jd: float):
+def return_planet_state(source: str, planet:str, jd_array:NDArray[np.float64] | float):
     """Return a planet's Cartesian position at a given time, either via jpl horizons or ephemerides table
 
     Args:
         source (str): Where to get state from. "horizons" and "tabulated_elements" for JPL Horizons and ephemerides table respectively
         planet (str): Name of the body of interest
-        jd (float): Time of interest
+        jd_array (NDArray [float]): Time of interest
 
     Raises:
         ValueError: _description_
 
     Returns:
-        ndarray, ndarray: The position, velocity of the body. m and m/s
+        NDArray, NDArray: The positions, velocities of the body. m and m/s
     """
     
+    jd_array = np.atleast_1d(jd_array)
+    
     if source.lower() == "horizons":
-        position, velocity = state_from_horizons(planet, jd)
+        state_array = state_from_horizons(planet, jd_array)        
     elif source.lower() == "tabulated_elements":
-        table_choice = select_table(jd=jd)
-        position, velocity = state_from_ephem(table_choice, planet, jd)
+        state_array = state_from_ephem(planet, jd_array)        
     elif source.lower() == "spice":
-        position, velocity = state_from_spice(planet, jd)
+        state_array = state_from_spice(planet, jd_array)        
     else:
         raise ValueError(f"Invalid source '{source}' for planetary states")
     
-    return position, velocity 
-    
+    return state_array 

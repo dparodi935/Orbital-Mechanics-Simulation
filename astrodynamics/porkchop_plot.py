@@ -10,8 +10,8 @@ G = constants.G
 mu = constants.solar_mass * G
 au = constants.au
 month = constants.day * 30.0
-DATA_ROOT = os.path.join("C:\\", "Users", "USERNAME", "Downloads")
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+DATA_ROOT = os.path.join(SCRIPT_DIR, "..", "outputs")
 
 yaml_constants = utility.open_yaml_file(SCRIPT_DIR, "constants")
 
@@ -69,8 +69,8 @@ def init_time_arrays(initial_dep_time, body1_name, body2_name, N = 100):
     initial_arr_time = initial_dep_time + buffer_dt
     final_arr_time = final_dep_time + end_buffer_dt
 
-    init_dep_jd, final_dep_jd = sidereal.return_jd_from_dt(initial_dep_time), sidereal.return_jd_from_dt(final_dep_time)
-    init_arr_jd, final_arr_jd = sidereal.return_jd_from_dt(initial_arr_time), sidereal.return_jd_from_dt(final_arr_time)
+    init_dep_jd, final_dep_jd = sidereal.datetime_to_jd(initial_dep_time), sidereal.datetime_to_jd(final_dep_time)
+    init_arr_jd, final_arr_jd = sidereal.datetime_to_jd(initial_arr_time), sidereal.datetime_to_jd(final_arr_time)
     
     dep_times_array_jd = np.linspace(init_dep_jd, final_dep_jd, N)
     arr_times_array_jd = np.linspace(init_arr_jd, final_arr_jd, N)
@@ -89,13 +89,7 @@ def init_vel_arrays(dep_times_array, arr_times_array):
 
 
 def init_body_state_arrays(times_array, source, body_name):
-    b_state_array = np.zeros((len(times_array),6), dtype=np.float64)
-
-    for i, time in enumerate(times_array):
-        b_pos, b_vel = ephem.return_planet_state(source, body_name, time)
-        b_state_array[i, 0:3] = b_pos
-        b_state_array[i, 3:6] = b_vel
-        
+    b_state_array = ephem.return_planet_state(source, body_name, times_array)    
     return b_state_array
  
 
@@ -180,6 +174,6 @@ body1_name = "earth"
 body2_name = "mars"
 initial_dep_time = dt.datetime(2017, 1, 1)
 
-N = 50
+N = 20
 
 porkchop(initial_dep_time, body2_name, body1_name=body1_name, N=N)
