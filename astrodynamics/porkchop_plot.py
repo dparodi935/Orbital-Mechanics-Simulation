@@ -14,6 +14,9 @@ mu = constants.solar_mass * G
 MONTH = constants.day * 30.0
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 DATA_ROOT = os.path.join(SCRIPT_DIR, "..", "outputs")
+SOURCE = "spice"
+DV_CAP_FACTOR = 2
+NUM_DV_CONTOURS = 30
 
 yaml_constants = utility.open_yaml_file(SCRIPT_DIR, "constants")
 
@@ -78,14 +81,14 @@ def init_time_arrays(initial_dep_time, body1_name, body2_name, N=100, N_syn=1):
     init_dep_jd, final_dep_jd = sidereal.datetime_to_jd(initial_dep_time), sidereal.datetime_to_jd(final_dep_time)
     init_arr_jd, final_arr_jd = sidereal.datetime_to_jd(initial_arr_time), sidereal.datetime_to_jd(final_arr_time)
     
-    dep_times_array_jd = np.linspace(init_dep_jd, final_dep_jd, N)
-    arr_times_array_jd = np.linspace(init_arr_jd, final_arr_jd, N)
+    dep_times_jd = np.linspace(init_dep_jd, final_dep_jd, N)
+    arr_times_jd = np.linspace(init_arr_jd, final_arr_jd, N)
         
-    return dep_times_array_jd, arr_times_array_jd
+    return dep_times_jd, arr_times_jd
 
 
-def init_vel_arrays(dep_times_array, arr_times_array):
-    N_arr, N_dep = len(arr_times_array), len(dep_times_array)
+def init_vel_arrays(dep_times, arr_times):
+    N_arr, N_dep = len(arr_times), len(dep_times)
     v_1_values = np.full((N_arr, N_dep, 3), fill_value=np.nan)
     v_2_values = np.full((N_arr, N_dep, 3), fill_value=np.nan)
     dep_delta_v_values = np.full((N_arr, N_dep), fill_value=np.nan)
@@ -99,38 +102,69 @@ def init_body_state_arrays(times_array, source, body_name):
     return b_state_array
  
 
-def porkchop_plotter(dep_times_array_jd, arr_times_array_jd, delta_v_values, body1_name, body2_name, savefig=True, plot=True):
+def cap_delta_v_values(delta_v_values):
+    min_dv = np.min(np.nan_to_num(delta_v_values,nan=1e+99))
+    dv_cap = min_dv * DV_CAP_FACTOR
+    delta_v_values[delta_v_values > dv_cap] = np.nan
+    return delta_v_values
+
+
+def print_dv_min(delta_v_values, dep_times_jd, arr_times_jd):
+    N = len(arr_times_jd)
+    cleaned_dv_vals = np.nan_to_num(delta_v_values,nan=1e+99)
+    
+    min_dv = np.min(cleaned_dv_vals)
+    min_idx = np.argmin(cleaned_dv_vals)
+    min_dep_dt = sidereal.jd_to_datetime(dep_times_jd[min_idx % N])
+    min_arr_dt = sidereal.jd_to_datetime(arr_times_jd[min_idx // N])
+        
+    tof_months = (min_arr_dt - min_dep_dt).total_seconds()/MONTH
+    
+    print(
+        "\nMinimum ΔV Point\n"
+        "-------------------------\n"
+        f"Launch:   {min_dep_dt.strftime('%d/%m/%Y')}\n"
+        f"Arrival:  {min_arr_dt.strftime('%d/%m/%Y')}\n"
+        f"TOF:      {tof_months:.1f} months\n"
+        f"Min ΔV:   {min_dv:,.2f} m/s\n"
+    )
+
+
+def porkchop_plotter(dep_times_jd, arr_times_jd, delta_v_values, body1_name, body2_name, savefig=True, plot=True):
     """
     Generates a classical line-contoured porkchop plot matching standard astrodynamics 
     software styles, complete with Delta-V line contours, time-of-flight 
     contours in months, and a minimum Delta-V marker.
     """
-    NUM_DV_CONTOURS = 30
     J_MONTH  = sidereal.J_YR_DAYS/12
-    N = len(dep_times_array_jd)
+    N = len(dep_times_jd)
     
     # Generate 2D mesh grids for time of flight calculation in months
-    X_jd, Y_jd = np.meshgrid(dep_times_array_jd, arr_times_array_jd)
+    X_jd, Y_jd = np.meshgrid(dep_times_jd, arr_times_jd)
     tof_grid_months = (Y_jd - X_jd) / J_MONTH
 
     # Convert Julian Date axes to Python datetimes for Matplotlib date formatting
-    dep_times_dt = [sidereal.jd_to_datetime(jd) for jd in dep_times_array_jd]
-    arr_times_dt = [sidereal.jd_to_datetime(jd) for jd in arr_times_array_jd]
+    dep_times_dt = [sidereal.jd_to_datetime(jd) for jd in dep_times_jd]
+    arr_times_dt = [sidereal.jd_to_datetime(jd) for jd in arr_times_jd]
 
     fig, ax = plt.subplots(figsize=(10, 8))
 
-    # --- Delta-V Line Contours  ---
+    # --- Delta-V Line Contours + Minimum  ---
     min_dv = np.nanmin(delta_v_values)
     max_dv = np.nanmax(delta_v_values)
     dv_levels = np.linspace(min_dv, max_dv, NUM_DV_CONTOURS)
+    min_idx = np.argmin(np.nan_to_num(delta_v_values, nan = 1e+99))
     
     # Define normalization for the colormap to match the contour levels
     norm = mcolors.Normalize(vmin=min_dv, vmax=max_dv)
     cmap = plt.get_cmap('jet')
     
-    # Using ax.contour instead of filled contours to achieve the line-ring aesthetic
     dv_contour = ax.contour(dep_times_dt, arr_times_dt, delta_v_values, 
                             levels=dv_levels, cmap=cmap, norm=norm, linewidths=0.5)
+    
+    min_dep_dt = dep_times_dt[min_idx % N]
+    min_arr_dt = arr_times_dt[min_idx // N]
+    ax.scatter(min_dep_dt, min_arr_dt, marker= 'x', color="black", s=20) 
     
     # Create a solid colorbar using a ScalarMappable instead of the contour object
     sm = cm.ScalarMappable(cmap=cmap, norm=norm)
@@ -172,7 +206,6 @@ def porkchop_plotter(dep_times_array_jd, arr_times_array_jd, delta_v_values, bod
         print("Displaying porkchop plot")
         plt.show()
         
-        
     plt.close()
     
   
@@ -185,20 +218,20 @@ def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth
         body2_name (str): Name of the destination body 
         body1_name (str, optional): Name of the body being departed from. Defaults to "earth".
         N (int, optional): Number of dates on each axis. Defaults to 400.
+        N (int, optional): Number of dates on each axis. Defaults to 400.
+        savefig (bool, optional): If true, will save the porkchop plot as an image
+        plot (bool, optional): If true, will display the porkchop plot in a pop-up window
     """
-    SOURCE = "spice"
-    DV_CAP_FACTOR = 2
-
     n_check = int(N/10)
     if n_check == 0: n_check = 1
     
-    dep_times_array, arr_times_array = init_time_arrays(initial_dep_time, body1_name, body2_name, N, N_syn)
+    dep_times_jd, arr_times_jd = init_time_arrays(initial_dep_time, body1_name, body2_name, N, N_syn)
     print("Created departure and arrival time arrays")
     
-    v_1_values, v_2_values, dep_delta_v_values, arr_delta_v_values, delta_v_values = init_vel_arrays(dep_times_array, arr_times_array)
+    v_1_values, v_2_values, dep_delta_v_values, arr_delta_v_values, delta_v_values = init_vel_arrays(dep_times_jd, arr_times_jd)
     
-    b1_state_array = init_body_state_arrays(dep_times_array, SOURCE, body1_name)
-    b2_state_array = init_body_state_arrays(arr_times_array, SOURCE, body2_name)
+    b1_state_array = init_body_state_arrays(dep_times_jd, SOURCE, body1_name)
+    b2_state_array = init_body_state_arrays(arr_times_jd, SOURCE, body2_name)
 
     b1_positions = b1_state_array[:, 0:3]
     b2_positions = b2_state_array[:, 0:3]
@@ -206,10 +239,10 @@ def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth
     print("Created body states")
     
     print("Calculating delta-V values")
-    for i_dep, dep_time in enumerate(tqdm.tqdm(dep_times_array)):
+    for i_dep, dep_time in enumerate(tqdm.tqdm(dep_times_jd)):
         b1_pos = b1_positions[i_dep]
 
-        for i_arr, arr_time in enumerate(arr_times_array):
+        for i_arr, arr_time in enumerate(arr_times_jd):
             b2_pos = b2_positions[i_arr]
             
             tof_jd = arr_time - dep_time
@@ -231,11 +264,11 @@ def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth
     
     delta_v_values = dep_delta_v_values + arr_delta_v_values
     
-    min_dv = np.nan_to_num(delta_v_values,nan=1e+99).min()
-    dv_cap = min_dv * DV_CAP_FACTOR
-    delta_v_values[delta_v_values > dv_cap] = np.nan
+    delta_v_values = cap_delta_v_values(delta_v_values)
+    
+    print_dv_min(delta_v_values, dep_times_jd, arr_times_jd)
 
-    porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, body1_name, body2_name, savefig=savefig, plot=plot)
+    porkchop_plotter(dep_times_jd, arr_times_jd, delta_v_values, body1_name, body2_name, savefig=savefig, plot=plot)
     
 
 def format_time(time_str):
