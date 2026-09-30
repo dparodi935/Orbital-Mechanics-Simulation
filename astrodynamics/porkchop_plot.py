@@ -100,7 +100,7 @@ def init_body_state_arrays(times_array, source, body_name):
     return b_state_array
  
 
-def porkchop_plotter(dep_times_array_jd, arr_times_array_jd, delta_v_values, body1_name, body2_name, savefig=False):
+def porkchop_plotter(dep_times_array_jd, arr_times_array_jd, delta_v_values, body1_name, body2_name, savefig=True, plot=True):
     """
     Generates a classical line-contoured porkchop plot matching standard astrodynamics 
     software styles, complete with Delta-V line contours, time-of-flight 
@@ -108,6 +108,7 @@ def porkchop_plotter(dep_times_array_jd, arr_times_array_jd, delta_v_values, bod
     """
     NUM_DV_CONTOURS = 30
     J_MONTH  = sidereal.J_YR_DAYS/12
+    N = len(dep_times_array_jd)
     
     # Generate 2D mesh grids for time of flight calculation in months
     X_jd, Y_jd = np.meshgrid(dep_times_array_jd, arr_times_array_jd)
@@ -119,7 +120,7 @@ def porkchop_plotter(dep_times_array_jd, arr_times_array_jd, delta_v_values, bod
 
     fig, ax = plt.subplots(figsize=(10, 8))
 
-    # --- 1. Delta-V Line Contours  ---
+    # --- Delta-V Line Contours  ---
     min_dv = np.nanmin(delta_v_values)
     max_dv = np.nanmax(delta_v_values)
     dv_levels = np.linspace(min_dv, max_dv, NUM_DV_CONTOURS)
@@ -138,7 +139,8 @@ def porkchop_plotter(dep_times_array_jd, arr_times_array_jd, delta_v_values, bod
     cbar = fig.colorbar(sm, ax=ax)
     cbar.set_label('Total $\\Delta$V')
 
-    # --- 2. Time of Flight Contours (in Months) ---
+
+    # --- Time of Flight Contours (in Months) ---
     tof_1_dt, tof_2_dt = caculate_buffer(body1_name, body2_name)
     tof_1, tof_2 = tof_1_dt.total_seconds()/MONTH, tof_2_dt.total_seconds()/MONTH 
     tof_levels = np.linspace(tof_1, tof_2, num = 5)
@@ -147,8 +149,9 @@ def porkchop_plotter(dep_times_array_jd, arr_times_array_jd, delta_v_values, bod
     ax.clabel(tof_contour, fmt='%d mo', fontsize=8)
 
 
-    
-    # --- 4. Grid Lines and Axis Formatting ---
+    # --- Grid Lines and Axis Formatting ---
+    ax.set_xlim(dep_times_dt[0], dep_times_dt[-1])
+    ax.set_ylim(arr_times_dt[0], arr_times_dt[-1])
     ax.grid(True, linestyle='--', color='black', alpha=0.4)
     
     date_format = mdates.DateFormatter('%m/%d/%y')
@@ -158,19 +161,21 @@ def porkchop_plotter(dep_times_array_jd, arr_times_array_jd, delta_v_values, bod
 
     ax.set_xlabel("Launch Date")
     ax.set_ylabel("Arrival Date")
-    ax.set_title("Interplanetary Transfer Porkchop Plot")
+    ax.set_title(f"{body1_name.title()}-{body2_name.title()} Porkchop Plot")
 
     if savefig: 
-        # Assuming DATA_ROOT is defined globally
-        filepath = os.path.join(DATA_ROOT, "porkchop.png")
+        img_name =  f"{body1_name}_{body2_name}_{N}_porkchop"        
+        filepath = os.path.join(DATA_ROOT, f"{img_name}.png")
         plt.savefig(filepath, dpi=300)
+    
+    if plot:   
+        plt.show()
         
-    plt.show()
     plt.close()
     
   
 
-def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth", N:int=400, N_syn:int=1):
+def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth", N:int=400, N_syn:int=1, savefig:bool=False, plot:bool=False):
     """Saves and creates a porkchop plot for travel between any two planets
 
     Args:
@@ -231,7 +236,7 @@ def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth
     dv_cap = min_dv * DV_CAP_FACTOR
     delta_v_values[delta_v_values > dv_cap] = np.nan
 
-    porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, body1_name, body2_name, savefig=True)
+    porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, body1_name, body2_name, savefig=savefig, plot=plot)
     
 
 def format_time(time_str):
@@ -266,13 +271,14 @@ def main():
     parser.add_argument("--origin", default="earth")
     parser.add_argument("--N", type=int, default=500)
     parser.add_argument("--N-syn", type=int, default=1)
-    #TO ADD: PLOTTING/SAVING FIGURE -> need to set ax limits for first option
+    parser.add_argument("--save-fig", action="store_true")
+    parser.add_argument("--plot", action="store_true")
 
     a = parser.parse_args()
     
     initial_dep_time = format_time(a.init_time)
     
-    porkchop(initial_dep_time, a.target, body1_name=a.origin, N=a.N, N_syn=a.N_syn)
+    porkchop(initial_dep_time, a.target, body1_name=a.origin, N=a.N, N_syn=a.N_syn, savefig=a.save_fig, plot=a.plot)
 
 
 if __name__ == "__main__":
