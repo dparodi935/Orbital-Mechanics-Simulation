@@ -11,8 +11,7 @@ import os
 
 G = constants.G
 mu = constants.solar_mass * G
-au = constants.au
-month = constants.day * 30.0
+MONTH = constants.day * 30.0
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 DATA_ROOT = os.path.join(SCRIPT_DIR, "..", "outputs")
 
@@ -28,15 +27,17 @@ def return_transfer_orbit(position_1: np.ndarray, position_2: np.ndarray, tof: f
     return orbital_elements
 
 
-def caculate_buffer(b1_init_pos, b2_init_pos):
+def caculate_buffer(body1_name, body2_name):
+    # chosen  buffers for Mars are 1 and 15 months
     mars_buffer_days_initial = 30 * 1
     mars_buffer_days_final = 30 * 15
-    mars_sma = 1.523 * au
-    earth_mars_a = 0.5*(au + mars_sma)
-    a1 = np.linalg.norm(b1_init_pos)
-    a2 = np.linalg.norm(b2_init_pos)
-
-    a = 0.5 * (a1+a2)
+    earth_sma = yaml_constants["SOL_DATA"]["earth"]["sma"]
+    mars_sma = yaml_constants["SOL_DATA"]["mars"]["sma"] 
+    earth_mars_a = 0.5*(earth_sma + mars_sma)
+    
+    b1_sma = yaml_constants["SOL_DATA"][body1_name.lower()]["sma"]
+    b2_sma = yaml_constants["SOL_DATA"][body2_name.lower()]["sma"] 
+    a = 0.5 * (b1_sma + b2_sma)
     a_frac = a/earth_mars_a
     
     # Kepler's 3rd: T proportional to a^1.5
@@ -45,7 +46,9 @@ def caculate_buffer(b1_init_pos, b2_init_pos):
     
     buffer_days_initial_dt = dt.timedelta(days=buffer_days_initial)
     buffer_days_final_dt = dt.timedelta(days=buffer_days_final)
+    
     return buffer_days_initial_dt, buffer_days_final_dt
+
 
 
 def synodic_period(b1_period, b2_period):
@@ -68,7 +71,7 @@ def init_time_arrays(initial_dep_time, body1_name, body2_name, N=100, N_syn=1):
     
     final_dep_time = initial_dep_time + syn_period_dt
     
-    buffer_dt, end_buffer_dt = caculate_buffer(b1_sma, b2_sma)
+    buffer_dt, end_buffer_dt = caculate_buffer(body1_name, body2_name)
     initial_arr_time = initial_dep_time + buffer_dt
     final_arr_time = final_dep_time + end_buffer_dt
 
@@ -96,17 +99,18 @@ def init_body_state_arrays(times_array, source, body_name):
     return b_state_array
  
 
-
-def porkchop_plotter(dep_times_array_jd, arr_times_array_jd, delta_v_values, savefig=False):
+def porkchop_plotter(dep_times_array_jd, arr_times_array_jd, delta_v_values, body1_name, body2_name, savefig=False):
     """
     Generates a classical line-contoured porkchop plot matching standard astrodynamics 
     software styles, complete with Delta-V line contours, time-of-flight 
     contours in months, and a minimum Delta-V marker.
     """
+    NUM_DV_CONTOURS = 30
+    J_MONTH  = sidereal.J_YR_DAYS/12
     
     # Generate 2D mesh grids for time of flight calculation in months
     X_jd, Y_jd = np.meshgrid(dep_times_array_jd, arr_times_array_jd)
-    #tof_grid_months = (Y_jd - X_jd) / 30.4375
+    tof_grid_months = (Y_jd - X_jd) / J_MONTH
 
     # Convert Julian Date axes to Python datetimes for Matplotlib date formatting
     dep_times_dt = [sidereal.jd_to_datetime(jd) for jd in dep_times_array_jd]
@@ -114,10 +118,10 @@ def porkchop_plotter(dep_times_array_jd, arr_times_array_jd, delta_v_values, sav
 
     fig, ax = plt.subplots(figsize=(10, 8))
 
-    # --- 1. Delta-V Line Contours (Classic MATLAB / ASTRO style) ---
+    # --- 1. Delta-V Line Contours  ---
     min_dv = np.nanmin(delta_v_values)
     max_dv = np.nanmax(delta_v_values)
-    dv_levels = np.linspace(min_dv, max_dv, 30)
+    dv_levels = np.linspace(min_dv, max_dv, NUM_DV_CONTOURS)
     
     # Define normalization for the colormap to match the contour levels
     norm = mcolors.Normalize(vmin=min_dv, vmax=max_dv)
@@ -134,12 +138,15 @@ def porkchop_plotter(dep_times_array_jd, arr_times_array_jd, delta_v_values, sav
     cbar.set_label('Total $\\Delta$V')
 
     # --- 2. Time of Flight Contours (in Months) ---
-    """tof_levels = np.arange(3, 13, 1)  # Adjust range (e.g., 3 to 12 months) based on your mission
+    tof_1_dt, tof_2_dt = caculate_buffer(body1_name, body2_name)
+    tof_1, tof_2 = tof_1_dt.total_seconds()/MONTH, tof_2_dt.total_seconds()/MONTH 
+    tof_levels = np.linspace(tof_1, tof_2, num = 5)
     tof_contour = ax.contour(dep_times_dt, arr_times_dt, tof_grid_months, 
-                             levels=tof_levels, colors='black', alpha=0.5, linestyles='dashed')
-    ax.clabel(tof_contour, fmt='%d mo', fontsize=8)"""
+                             levels=tof_levels, colors='black', alpha=0.8, linestyles='dashed', linewidth=1)
+    ax.clabel(tof_contour, fmt='%d mo', fontsize=8)
 
 
+    
     # --- 4. Grid Lines and Axis Formatting ---
     ax.grid(True, linestyle='--', color='black', alpha=0.4)
     
@@ -223,14 +230,13 @@ def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth
     dv_cap = min_dv * DV_CAP_FACTOR
     delta_v_values[delta_v_values > dv_cap] = np.nan
 
-    porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, savefig=True)
+    porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, body1_name, body2_name, savefig=True)
     
-        
 body1_name = "earth"
 body2_name = "mars"
 initial_dep_time = dt.datetime(2017, 1, 1)
 
-N = 500
+N = 50
 N_syn = 1
 
 porkchop(initial_dep_time, body2_name, body1_name=body1_name, N=N, N_syn=N_syn)
