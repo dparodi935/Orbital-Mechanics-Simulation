@@ -7,8 +7,7 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import datetime as dt
 import constants, utility, sidereal
-import os
-import argparse
+import os, argparse, tqdm
 
 G = constants.G
 mu = constants.solar_mass * G
@@ -167,9 +166,12 @@ def porkchop_plotter(dep_times_array_jd, arr_times_array_jd, delta_v_values, bod
         img_name =  f"{body1_name}_{body2_name}_{N}_porkchop"        
         filepath = os.path.join(DATA_ROOT, f"{img_name}.png")
         plt.savefig(filepath, dpi=300)
+        print(f"Succesfully saved porkchop plot to {filepath}")
     
     if plot:   
+        print("Displaying porkchop plot")
         plt.show()
+        
         
     plt.close()
     
@@ -203,7 +205,8 @@ def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth
     
     print("Created body states")
     
-    for i_dep, dep_time in enumerate(dep_times_array):
+    print("Calculating delta-V values")
+    for i_dep, dep_time in enumerate(tqdm.tqdm(dep_times_array)):
         b1_pos = b1_positions[i_dep]
 
         for i_arr, arr_time in enumerate(arr_times_array):
@@ -222,10 +225,6 @@ def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth
                 
             v_1_values[i_arr, i_dep] = v_1
             v_2_values[i_arr, i_dep] = v_2
-                
-        if i_dep % n_check == 0: 
-            factor_done = int(100*(i_dep)/N) + 10
-            print(f"{factor_done}% complete")
                       
     dep_delta_v_values = np.sqrt(np.sum((v_1_values-b1_state_array[:, 3:6])**2, axis=2))
     arr_delta_v_values = np.sqrt(np.sum((v_2_values-b2_state_array[:, np.newaxis, 3:6])**2, axis=2))
@@ -266,13 +265,13 @@ def format_time(time_str):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--init-time", default="01/01/2017")  #DD/MM/YYYY
-    parser.add_argument("--target", required=True)
-    parser.add_argument("--origin", default="earth")
-    parser.add_argument("--N", type=int, default=500)
-    parser.add_argument("--N-syn", type=int, default=1)
-    parser.add_argument("--save-fig", action="store_true")
-    parser.add_argument("--plot", action="store_true")
+    parser.add_argument("--init-time", type=str, default="01/01/2017", help="The initial departure date in the format DD/MM/YYYY")
+    parser.add_argument("--target", type=str, required=True, help="The target planet")
+    parser.add_argument("--origin", type=str, default="earth", help="The origin planet")
+    parser.add_argument("--N", type=int, default=500, help="The number of departure and arrival dates. Determines the number of points")
+    parser.add_argument("--N-syn", type=int, default=1, help="The number of synodic periods to make the plot over")
+    parser.add_argument("--save-fig", action="store_true", help="Whether or not to save an image of the plot in the outputs folder")
+    parser.add_argument("--plot", action="store_true", help="Whether or not to immediately display the plot as a popup")
 
     a = parser.parse_args()
     
