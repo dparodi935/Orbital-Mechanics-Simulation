@@ -8,6 +8,7 @@ import matplotlib.colors as mcolors
 import datetime as dt
 import constants, utility, sidereal
 import os
+import argparse
 
 G = constants.G
 mu = constants.solar_mass * G
@@ -232,11 +233,47 @@ def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth
 
     porkchop_plotter(dep_times_array, arr_times_array, delta_v_values, body1_name, body2_name, savefig=True)
     
-body1_name = "earth"
-body2_name = "mars"
-initial_dep_time = dt.datetime(2017, 1, 1)
 
-N = 50
-N_syn = 1
+def format_time(time_str):
+    split_str = time_str.split("/")
+    day_str = split_str[0]
+    month_str = split_str[1]
+    year = int(split_str[2])
+    
+    # validation
+    if len(day_str) != 2: 
+        raise ValueError("Day must be in format 'XX'")
+    if len(month_str) != 2: 
+            raise ValueError("Day must be in format 'XX'")
+    
+    day = int(day_str)
+    month = int(month_str)
+    
+    if day < 1 or day > 31:
+        raise ValueError("Enter valid value for the day")
+    if month < 1  or month > 12:
+        raise ValueError("Enter valid value for the month")
+    
+    initial_dep_time = dt.datetime(year, month, day)
+    
+    return initial_dep_time
 
-porkchop(initial_dep_time, body2_name, body1_name=body1_name, N=N, N_syn=N_syn)
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--init-time", default="01/01/2017")  #DD/MM/YYYY
+    parser.add_argument("--target", required=True)
+    parser.add_argument("--origin", default="earth")
+    parser.add_argument("--N", type=int, default=500)
+    parser.add_argument("--N-syn", type=int, default=1)
+    #TO ADD: PLOTTING/SAVING FIGURE -> need to set ax limits for first option
+
+    a = parser.parse_args()
+    
+    initial_dep_time = format_time(a.init_time)
+    
+    porkchop(initial_dep_time, a.target, body1_name=a.origin, N=a.N, N_syn=a.N_syn)
+
+
+if __name__ == "__main__":
+    main()
