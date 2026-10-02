@@ -1,9 +1,10 @@
 import numpy as np
+from numpy.typing import NDArray
 from scipy.interpolate import interp1d
 
-class body():
+class Body():
     
-    def __init__(self, mass, radius, position, velocity, name, colour, preset=False):
+    def __init__(self, mass:float, radius:float, position:NDArray, velocity:NDArray, name:str, colour:str, preset:bool=False) -> None:
         self.name = name
         self.mass = mass
         self.radius = radius
@@ -19,14 +20,14 @@ class body():
         self.velocity_history = [np.copy(self.velocity)]
         self.soi_history = []
 
-    def update(self):
+    def update(self) -> None:
         self.position += self.delta_x
         self.velocity += self.delta_v
         self.position_history.append(np.copy(self.position))
         self.velocity_history.append(np.copy(self.velocity))
         self.soi_history.append(self.soi)
     
-    def interpolate_history(self, time_values, intended_time_values):
+    def interpolate_history(self, time_values:list[float], intended_time_values:list[float]) -> tuple[NDArray, NDArray, list[Body]]:
         ''' Due to variable time step we need to interpolate the position/velocity data for the animation
         '''
         interpolated_position_history = []

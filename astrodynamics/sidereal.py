@@ -3,10 +3,11 @@ import datetime as dt
 
 J2000_DATETIME = dt.datetime(2000, 1, 1, 12, 0, 0)
 J2000_JD = 2451545.0
-JD_SECONDS = 86400.0
+JD_SECONDS = 86400.0 # seconds in a julian day
+J_YR_DAYS = 365.25  # Julian days in a year
 
 
-def return_j0(y: int, m: int, d: int):
+def return_j0(y: int, m: int, d: int) -> float:
     """Returns the Julian day number at 0h UT
 
     Args:

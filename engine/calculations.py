@@ -4,16 +4,19 @@ sys.path.append(os.path.join(script_dir, ".."))
 
 from astrodynamics import constants
 import numpy as np
+from numpy.typing import NDArray
+import bodies
 
-def gravity(rel_pos_vector, M):
+def gravity(rel_pos_vector:NDArray, mass:float) -> NDArray:
     ''' 
     Calculate acceleration due to gravity between two bodies
     '''
     distance = np.linalg.norm(rel_pos_vector)
-    A = constants.G*M
+    A = constants.G*mass
     return rel_pos_vector * ((A)/(distance**3))
 
-def get_net_acceleration(main_body, bodies_list):
+
+def get_net_acceleration(main_body:bodies.Body, bodies_list:list[bodies.Body]) -> NDArray:
     ''' Calculates net gravitational acceleration on main_body
     '''
     net_acc = np.array([0,0,0],dtype=float)
@@ -25,13 +28,14 @@ def get_net_acceleration(main_body, bodies_list):
     return net_acc
  
 
-def initialise(master_bodies_list):
+def initialise(master_bodies_list:list[bodies.Body]) -> None:
     #add check for integrator being used. for now just assume RFK
     for body in master_bodies_list:
         body.kv_values = np.zeros((6, 3), dtype=float)
         body.ka_values = np.zeros((6, 3), dtype=float)
         
-def time_step(beta, vel_error_tol, pos_error_tol, dt, master_bodies_list):
+        
+def time_step(beta:float, vel_error_tol:float, pos_error_tol:float, dt:float, master_bodies_list:list[bodies.Body]) -> float:
     ''' Runge–Kutta–Fehlberg method 
     '''
     #MAX_dt_LIM = 10000
@@ -93,7 +97,8 @@ def time_step(beta, vel_error_tol, pos_error_tol, dt, master_bodies_list):
     
     return dt
 
-def determine_orbit_from_state(soi_mass, soi_position, soi_velocity, body_position, body_velocity):
+
+def determine_orbit_from_state(soi_mass:float, soi_position:NDArray, soi_velocity:NDArray, body_position:NDArray, body_velocity:NDArray) -> tuple[float]:
     ''' Takes in state vector of body + info about what it's orbiting and calculates the parameters of the orbit
     '''
     G = constants.G

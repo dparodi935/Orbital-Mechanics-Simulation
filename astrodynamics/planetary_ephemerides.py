@@ -11,8 +11,6 @@ import constants
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
-sys.path.append(SCRIPT_DIR)
-
 csv_folderpath = os.path.join(SCRIPT_DIR, "planetary_orbital_elements")
 spice_folderpath = os.path.join(SCRIPT_DIR, "spice_data")
 
@@ -47,7 +45,7 @@ def e_anomaly_kepler(e: float, M: float) -> float:
     return E
 
 
-def wrap_orbital_elements(q):
+def wrap_orbital_elements(q:dict) -> dict:
     # shift angular quantities so they lie in appropriate range
     q["i"] = q["i"] % (2*np.pi)   # inclination
     if q["i"] > np.pi: q["i"] = (2*np.pi) - q["i"]
@@ -73,7 +71,7 @@ def ta_from_e_E(e: float, E: float) -> float:
     return ta
 
 
-def orbital_elements_from_ephem(df: pd.DataFrame, planet: str, JD: float):    
+def orbital_elements_from_ephem(df: pd.DataFrame, planet: str, JD: float) -> tuple[float]:    
     """_summary_
 
     Args:
@@ -152,7 +150,7 @@ def orbital_elements_from_ephem(df: pd.DataFrame, planet: str, JD: float):
     return orbital_elements
 
 
-def state_from_ephem(planet:str, jd_array:NDArray):
+def state_from_ephem(planet:str, jd_array:NDArray) -> NDArray:
     jd_idx = np.argmax(abs(jd_array-sidereal.J2000_JD))
     jd_limit =  jd_array[jd_idx]
     table_choice = select_table(jd=jd_limit)
@@ -172,7 +170,7 @@ def state_from_ephem(planet:str, jd_array:NDArray):
     return state_array
 
 
-def select_table(jd: float):
+def select_table(jd: float) -> str:
     if jd < 2469807.50000 and jd > 2378496.50000:
         return "short"
     elif jd < 2816787.50000 and jd > 625307.50000:
@@ -181,7 +179,7 @@ def select_table(jd: float):
         raise ValueError("Ephemerides do not support years outside the range 3000BC to 3000AD")
     
 
-def extract_horizons_ids():
+def extract_horizons_ids() -> dict:
     """Returns a dictionary containing the name and JPL Horizons id of planets and other major objects
 
     Returns:
@@ -192,7 +190,7 @@ def extract_horizons_ids():
     return id_dict
 
 
-def horizons_query_state(target_name:str, jd:float):  
+def horizons_query_state(target_name:str, jd:float) -> tuple[NDArray, NDArray]:  
     au = constants.au
     day = constants.day
     
@@ -214,7 +212,7 @@ def horizons_query_state(target_name:str, jd:float):
     return position, velocity
 
 
-def state_from_horizons(target:str, jd_array:float):
+def state_from_horizons(target:str, jd_array:float) -> NDArray:
     """Returns the position and velocity of an object using JPL horizons 
 
     Args:
@@ -227,21 +225,24 @@ def state_from_horizons(target:str, jd_array:float):
     HORIZONS_CAP = 50
     if len(jd_array) > HORIZONS_CAP:
         raise ValueError(f"Only up to {HORIZONS_CAP} queries can be made to JPL horizons in a single go")
+    
     state_array = np.zeros((len(jd_array),6), dtype=np.float64)
+    
     for i, jd in enumerate(jd_array):
         position, velocity = horizons_query_state(target, jd)
         state_array[i, 0:3] = position
         state_array[i, 3:6] = velocity
+        
     return state_array
 
 
-def retrieve_SPK_kernel(spk_name):
+def retrieve_SPK_kernel(spk_name:str) -> SPK:
     knl_fpath = os.path.join(spice_folderpath, f"{spk_name}.bsp")
     kernel = SPK.open(knl_fpath)
     return kernel
 
 
-def return_sbc_state(kernel, ids_dict, body_raw, jd_array):
+def return_sbc_state(kernel:SPK, ids_dict:dict, body_raw:str, jd_array:NDArray) -> tuple[NDArray, NDArray]:
     """Returns position of input body relative to the solar system barycenter
 
     Args:
@@ -293,13 +294,13 @@ def return_sbc_state(kernel, ids_dict, body_raw, jd_array):
     return rel_sbc_position_si, rel_sbc_velocity_si
 
 
-def get_kernel_boundaries(kernel):
+def get_kernel_boundaries(kernel:SPK) -> tuple[float, float]:
     start_jd = min(segment.start_jd for segment in kernel.segments)
     end_jd = min(segment.end_jd for segment in kernel.segments)
     return start_jd, end_jd
 
 
-def state_from_spice(planet:str, jd_array:NDArray):
+def state_from_spice(planet:str, jd_array:NDArray) -> NDArray:
     spk_name = "de440s"
     
     kernel = retrieve_SPK_kernel(spk_name)    
@@ -324,7 +325,7 @@ def state_from_spice(planet:str, jd_array:NDArray):
     return state_array 
     
 
-def return_planet_state(source: str, planet:str, jd_array:NDArray[np.float64] | float):
+def return_planet_state(source: str, planet:str, jd_array:NDArray[np.float64] | float) -> NDArray:
     """Return a planet's Cartesian position at a given time, either via jpl horizons or ephemerides table
 
     Args:

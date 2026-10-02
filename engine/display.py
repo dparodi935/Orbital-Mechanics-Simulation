@@ -8,16 +8,21 @@ matplotlib.use('Qt5Agg')
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from functools import partial
-import calculations 
-from astrodynamics import constants
-import numpy as np
 from matplotlib.patches import Circle
 from matplotlib.collections import PatchCollection
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from matplotlib.text import Text
+from functools import partial
+import calculations 
+import bodies
+from astrodynamics import constants
+import numpy as np
+from numpy.typing import NDArray
 
 
 #%%
-def positions_from_orbital_parameters(orbital_data, soi_position):
+def positions_from_orbital_parameters(orbital_data:dict[str:float], soi_position:NDArray) -> NDArray:
     ''' Takes in parameters of an orbit and returns position values to plot it
     '''
     r0, e_vector, normal, theta_correction = orbital_data.values()
@@ -47,19 +52,21 @@ def positions_from_orbital_parameters(orbital_data, soi_position):
     
     return position_values
 
+
 #%% Animation Functions
 
-def display_time(time):   
+def display_time(time:float) -> str:   
    if np.log10(time/3600 + 0.00001) > 1:
        decimal = 0 
    else:
        decimal = 1
    return f"Time = {time/3600:.{decimal}f} hrs"    
 
-def return_display_text(body, orbital_data, body_soi_speed, soi):
+
+def return_display_text(body:bodies.Body, orbital_data:dict[str:float], rel_body_velocity:NDArray, soi:bodies.Body) -> str:
     satellite_name = body.name
     colour = body.colour.capitalize()
-    speed = np.linalg.norm(body_soi_speed)
+    speed = np.linalg.norm(rel_body_velocity)
     soi_name = soi.name
     
     soi_radius = soi.radius
@@ -87,16 +94,18 @@ def return_display_text(body, orbital_data, body_soi_speed, soi):
 
     return text
 
-def generate_sphere(centre, radius, theta_bounds = [0, np.pi], phi_bounds = [0 , 2*np.pi]):
+
+def generate_sphere(centre_pos:list[float], radius:float, theta_bounds:list[float]=[0.0, np.pi], phi_bounds:list[float]=[0.0, 2*np.pi]) -> tuple[float]:
     theta = np.linspace(*theta_bounds, 100)
     phi = np.linspace(*phi_bounds, 100)
     
-    x = centre[0] + radius * np.outer(np.sin(theta), np.cos(phi))
-    y = centre[1] + radius * np.outer(np.sin(theta), np.sin(phi))
-    z = centre[2] + radius * np.outer(np.cos(theta), np.ones(np.size(theta)))
+    x = centre_pos[0] + radius * np.outer(np.sin(theta), np.cos(phi))
+    y = centre_pos[1] + radius * np.outer(np.sin(theta), np.sin(phi))
+    z = centre_pos[2] + radius * np.outer(np.cos(theta), np.ones(np.size(theta)))
     return x, y, z
 
-def return_frames_per_hour(reference_frame):
+
+def return_frames_per_hour(reference_frame:str) -> int:
     if reference_frame == "earth":
         frames_per_hour = 20
     elif reference_frame == "cislunar":
@@ -106,7 +115,8 @@ def return_frames_per_hour(reference_frame):
     
     return frames_per_hour
 
-def generate_frame_time_data(simulation_time_data, reference_frame):
+
+def generate_frame_time_data(simulation_time_data:list[float], reference_frame:str) -> tuple[int, NDArray]:
     #calculate the number of frames needed and the corresponding time values
     duration = simulation_time_data[-1]
     frames_per_hour = return_frames_per_hour(reference_frame)
@@ -116,13 +126,15 @@ def generate_frame_time_data(simulation_time_data, reference_frame):
     
     return num_frames, animation_time_data
 
-def return_display_half_width(master_bodies_list):
+
+def return_display_half_width(master_bodies_list:list[bodies.Body]) -> float:
     #calculate how large we need to make the display window
     greatest_extent = max([abs(np.array(item.position_history)).max() for item in master_bodies_list])
     display_half_width = greatest_extent * 1.2
     return display_half_width
 
-def return_body_colour(body):
+
+def return_body_colour(body:bodies.Body) -> str:
     #convert the colour of the body into the correct format for matplotlib
     colour_codes = {
     'red': 'r',
@@ -139,10 +151,12 @@ def return_body_colour(body):
     
     return colour
 
-def configure_text():
+
+def configure_text() -> None:
     plt.rcParams.update({'font.family': 'consolas', 'font.size': 10 })
 
-def configure_x_y_axes(ax, display_half_width,dimension=None):
+
+def configure_x_y_axes(ax:Axes, display_half_width:float, dimension:str=None) -> None:
     ax.set_xlim(-display_half_width, display_half_width)
     ax.set_ylim(-display_half_width, display_half_width)
     ax.set_aspect('equal', adjustable='box')
@@ -166,8 +180,9 @@ def configure_x_y_axes(ax, display_half_width,dimension=None):
         ax.xaxis.pane.set_visible(False)
         ax.yaxis.pane.set_visible(False)
         ax.zaxis.pane.set_visible(False)
+        
 
-def configure_text_displays(fig, master_bodies_list):
+def configure_text_displays(fig:Figure, master_bodies_list:list[bodies.Body]) -> list[Text]:
     text_displays = []
     #if body is a satellite, create text_display - OPTIMISE
     satellite_num = 0
@@ -185,11 +200,18 @@ def configure_text_displays(fig, master_bodies_list):
                                      #bbox=dict(facecolor='white', edgecolor='gray', alpha=0.7)))
     return text_displays      
 
-def configure_timer_artist(fig):
+
+def configure_timer_artist(fig:Figure) -> Text:
     timer = fig.text(0.8, 0.9, "Time = 0 hrs", verticalalignment='top', horizontalalignment='right')
     return timer
 
-def append_interpolated_body_data(body, vel_data, soi_data, simulation_time_data, animation_time_data, pos_data):
+
+def append_interpolated_body_data(body:bodies.Body, 
+                                  pos_data:list[NDArray], 
+                                  vel_data:list[NDArray], 
+                                  soi_data:list[list[bodies.Body]], 
+                                  simulation_time_data:list[float], 
+                                  animation_time_data:NDArray) -> tuple[list[NDArray], list[NDArray], list[list[bodies.Body]]]:
     interpolated_position_history, interpolated_velocity_history, interpolated_soi_history = body.interpolate_history(simulation_time_data, animation_time_data)
     
     pos_data.append(interpolated_position_history)
@@ -199,7 +221,7 @@ def append_interpolated_body_data(body, vel_data, soi_data, simulation_time_data
     return pos_data, soi_data, vel_data
 
 
-def return_soi(soi_data, frame, i):
+def return_soi(soi_data:list[list[bodies.Body]], frame:int, i:int) -> bodies.Body:
     #check if the body changes soi at any point. 
     if len(soi_data[i]) > 1:
         #if the body changes soi at some point, we need to find the soi at the current frame
@@ -210,7 +232,8 @@ def return_soi(soi_data, frame, i):
         
     return soi
 
-def output_animation(animation, animation_params, fig):
+
+def output_animation(animation:FuncAnimation, animation_params:dict, fig:Figure) -> None:
     mode, framerate, dpi, save_folder, filename = animation_params["mode"], animation_params["framerate"], animation_params["dpi"], animation_params["save_folder"], animation_params["filename"]
 
     if mode.lower() == 'saved':
@@ -229,9 +252,10 @@ def output_animation(animation, animation_params, fig):
         
         plt.show(block=True)
         
+        
 #%% 2D Matplotlib Animation
 
-def init_2D(master_bodies_list, simulation_time_data, reference_frame):
+def init_2D(master_bodies_list:list[bodies.Body], simulation_time_data:list[float], reference_frame:str) -> tuple[Figure, int, dict]:
     plt.close('all')
     plt.style.use('dark_background')
     display_half_width = return_display_half_width(master_bodies_list)
@@ -276,7 +300,7 @@ def init_2D(master_bodies_list, simulation_time_data, reference_frame):
         lines.append(ax.plot([],[], colour, lw=1.5, zorder = 0)[0])
         
         #interpolate body's data
-        pos_data, soi_data, vel_data = append_interpolated_body_data(body, vel_data, soi_data, simulation_time_data, animation_time_data, pos_data)
+        pos_data, soi_data, vel_data = append_interpolated_body_data(body, pos_data, vel_data, soi_data, simulation_time_data, animation_time_data)
     
     sim_data = {
         "characters": characters,
@@ -293,7 +317,7 @@ def init_2D(master_bodies_list, simulation_time_data, reference_frame):
     return fig, num_frames, sim_data
     
 
-def create_2D_animation(master_bodies_list, simulation_time_data, reference_frame, animation_params):
+def create_2D_animation(master_bodies_list:list[bodies.Body], simulation_time_data:list[float], reference_frame:str, animation_params:dict) -> None:
     framerate = animation_params["framerate"]
     fig, num_frames, sim_data = init_2D(master_bodies_list, simulation_time_data, reference_frame)
     
@@ -309,7 +333,7 @@ def create_2D_animation(master_bodies_list, simulation_time_data, reference_fram
     output_animation(animation, animation_params, fig) 
 
 
-def update_frame_2D(frame, sim_data=None):
+def update_frame_2D(frame:int, sim_data:dict=None) -> list:
     characters, lines, text_displays, pos_data, vel_data, soi_data, bodies_list, timer, animation_time_data = (
         sim_data["characters"],
         sim_data["lines"],
@@ -377,7 +401,7 @@ def update_frame_2D(frame, sim_data=None):
                                
 #%% 3d Matplotlib Animation
 
-def init_3D(master_bodies_list, simulation_time_data, reference_frame):
+def init_3D(master_bodies_list:list[bodies.Body], simulation_time_data:list[float], reference_frame:str) -> tuple[Figure, int, dict]:
     plt.style.use('default')
     display_half_width = return_display_half_width(master_bodies_list)
 
@@ -416,7 +440,7 @@ def init_3D(master_bodies_list, simulation_time_data, reference_frame):
         trajectory_lines.append(ax.plot([],[],[], colour, lw=1, zorder=9)[0])
         
         #interpolate the body's data
-        append_interpolated_body_data(body, vel_data, soi_data, simulation_time_data, animation_time_data, pos_data)
+        append_interpolated_body_data(body, pos_data, vel_data, soi_data, simulation_time_data, animation_time_data)
     
     sim_data = {
     "characters": characters,
@@ -433,7 +457,8 @@ def init_3D(master_bodies_list, simulation_time_data, reference_frame):
     
     return fig, num_frames, sim_data
 
-def draw_3D_background(ax, reference_frame, display_half_width):
+
+def draw_3D_background(ax:Axes, reference_frame:str, display_half_width:float) -> None:
     #Change this so what is drawn is decided in simulation.py frame() function?
     if reference_frame == 'earth':
         X, Y, Z = generate_sphere([0,0,0], constants.earth_radius, theta_bounds=[0,0.5*np.pi])
@@ -450,7 +475,8 @@ def draw_3D_background(ax, reference_frame, display_half_width):
     ax.plot_surface(X,Y,Z,alpha=0.4,color='gray',zorder=5)
     ax.grid(False)
 
-def update_matp_frame_3D(frame, sim_data=None):
+
+def update_matp_frame_3D(frame:int, sim_data:dict=None) -> list:
     characters, lines, trajectory_lines, text_displays, pos_data, vel_data, soi_data, bodies_list, timer, animation_time_data = (
         sim_data["characters"],
         sim_data["lines"],
@@ -518,8 +544,8 @@ def update_matp_frame_3D(frame, sim_data=None):
             
             if body.mass < 1e+10:
                 display = text_displays[display_counter]
-                body_soi_speed = body_velocity - soi_velocity
-                updated_display_text = return_display_text(body, orbital_data, body_soi_speed, soi)
+                rel_body_velocity = body_velocity - soi_velocity
+                updated_display_text = return_display_text(body, orbital_data, rel_body_velocity, soi)
                 display.set_text(updated_display_text)
                 display_counter += 1
 
@@ -531,7 +557,8 @@ def update_matp_frame_3D(frame, sim_data=None):
         
     return characters + lines + trajectory_lines + [timer]
 
-def create_3D_matp_animation(master_bodies_list, simulation_time_data, reference_frame, animation_params):
+
+def create_3D_matp_animation(master_bodies_list:list[bodies.Body], simulation_time_data:list[float], reference_frame:str, animation_params:dict) -> None:
     framerate = animation_params["framerate"]
     fig, num_frames, sim_data = init_3D(master_bodies_list, simulation_time_data, reference_frame)
     
@@ -549,7 +576,7 @@ def create_3D_matp_animation(master_bodies_list, simulation_time_data, reference
 
 #%% Static 2D Plot
     
-def plot(master_bodies_list):
+def plot(master_bodies_list: list[bodies.Body]) -> None:
     matplotlib.use('module://matplotlib_inline.backend_inline')
     fig_2dplot, ax_2dplot = plt.subplots()
     for body in master_bodies_list:
@@ -559,4 +586,3 @@ def plot(master_bodies_list):
     ax_2dplot.set_aspect('equal', adjustable='box')    
     plt.show()
     plt.close()
-

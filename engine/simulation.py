@@ -6,19 +6,20 @@ from astrodynamics import constants
 import calculations, display, bodies
 import yaml
 import numpy as np
+from numpy.typing import NDArray
 from time import perf_counter
 import lagrangepoints as lagrange
 import os 
 
 class sim():
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.folder_path = os.path.dirname(os.path.abspath(__file__))
 
         self.params = self.open_config_file('config')
         self.frame = None
         self.master_bodies_list = self.create_master_bodies_list()
-        self.SOIs = self.create_SOIs()
+        self.SOIs = self.create_SOI_radii()
         self.maneuvers_list, self.maneuver_times = self.create_maneuver_list()
         self.debug_mode = self.params["SIMULATION_PARAMS"]["debug_mode"]
         
@@ -28,7 +29,7 @@ class sim():
         self.time_values = [0]
         
         
-    def return_direction_vectors(self, subject, soi, coord_system='vnc'):
+    def return_direction_vectors(self, subject:bodies.Body, soi:bodies.Body, coord_system:str='vnc') -> None:
         ''' Returns the velocity, normal and cross-track vectors of an orbiting body (subject)
             VNC Frame (for now)
         '''
@@ -55,13 +56,13 @@ class sim():
 
     ''' SIMULATION INITIALISATION
     '''
-    def open_config_file(self, name):
+    def open_config_file(self, name:str) -> Any:
         config_file_path = os.path.join(self.folder_path,f'{name}.yaml')
         with open(config_file_path, 'r') as file:
             return yaml.safe_load(file)
     
     
-    def generate_frame(self):
+    def generate_frame(self) -> None:
         frame_data = self.params["FRAME"]
         preset_data = self.params['PRESET_BODIES']
         frame = frame_data["frame"]
@@ -122,11 +123,11 @@ class sim():
             print("ERROR: Unrecognised reference frame")
         
     
-    def calculate_lagrange_point(self, coord_origin_entries, frame_bodies_list):
+    def calculate_lagrange_point(self, coord_origin_entries:list[str], frame_bodies_list:list[bodies.Body]) -> tuple[NDArray]:
         if len(coord_origin_entries) == 2:
             if len(frame_bodies_list) == 1:
                 print("ERROR: Lagrange points require two bodies in the frame")
-                return np.zeros(3),np.zeros(3)
+                return np.zeros(3), np.zeros(3)
             
             entry_two = coord_origin_entries[1].replace(" ","")
             if entry_two.lower()  in ['l1','l2','l3','l4','l5']:
@@ -148,11 +149,12 @@ class sim():
                 
             else:    
                 print("ERROR: Entry after 2nd comma for 'coord_origin' must be of form Lx, where x is 1-5")
-                return np.zeros(3),np.zeros(3)
+                return np.zeros(3), np.zeros(3)
         else:
-            return np.zeros(3),np.zeros(3)
+            return np.zeros(3), np.zeros(3)
         
-    def configure_body_position(self, body, frame_bodies_list):
+        
+    def configure_body_position(self, body:dict, frame_bodies_list:list[bodies.Body]) -> tuple[NDArray, NDArray]:
         coord_system = body['position_input_mode']
         coord_origin = body['coord_origin']
         position_input = [float(item) for item in body['initial_pos']]
@@ -191,7 +193,7 @@ class sim():
         return position, vel_correction
             
     
-    def create_master_bodies_list(self):
+    def create_master_bodies_list(self) -> list[bodies.Body]:
         ''' Generate list of active bodies from the config file
         '''
         body_data = self.params['BODIES']
@@ -200,7 +202,7 @@ class sim():
         frame_bodies = self.generate_frame() 
         
         for body in frame_bodies:
-            master_bodies_list.append(bodies.body(*body, preset=True))
+            master_bodies_list.append(bodies.Body(*body, preset=True))
         
         if not body_data: 
             return master_bodies_list
@@ -215,12 +217,12 @@ class sim():
                                 
             dummy_velocity = np.zeros(3)
             
-            master_bodies_list.append(bodies.body(mass, radius, position, vel_correction, name, colour))
+            master_bodies_list.append(bodies.Body(mass, radius, position, vel_correction, name, colour))
         
         return master_bodies_list
 
     
-    def configure_body_velocities(self):
+    def configure_body_velocities(self) -> None:
         ''' Function that reads velocities from config file and translates them to x-y-z
         '''
         body_data = self.params['BODIES']
@@ -254,20 +256,20 @@ class sim():
             body.velocity = body.velocity + velocity
 
     
-    def create_maneuver_list(self):
+    def create_maneuver_list(self) -> tuple[list[dict], list[float]]:
         maneuvers_data = self.params['MANEUVERS']
         
         if maneuvers_data:
             sorted_maneuvers_list = sorted(maneuvers_data , key=lambda d:d['time'])
             maneuver_times = [item['time'] for item in sorted_maneuvers_list]
         else: 
-            return [],[]
+            return [], []
         
         return sorted_maneuvers_list, maneuver_times
     
     
-    def create_SOIs(self):
-        ''' Determine the size of every object's sphere of influence
+    def create_SOI_radii(self) -> dict[bodies.Body:float]:
+        ''' Determine the radius of every object's sphere of influence
         '''
         SOIs = {}
         
@@ -290,7 +292,7 @@ class sim():
         return SOIs
 
     
-    def retrieve_calc_params(self):
+    def retrieve_calc_params(self) -> tuple[float, float, float]:
         calc_params = self.params["CALCULATION_PARAMS"]
         beta = calc_params["beta"]  
         vel_error_tol = calc_params["vel_error_tol"]  #velocity error tolerance in m/s
@@ -301,7 +303,7 @@ class sim():
     
     ''' VISUALISATION
     '''
-    def create_animation(self):
+    def create_animation(self) -> None:
         start = perf_counter()
         
         animation_params = self.params["ANIMATION_PARAMS"]
@@ -330,7 +332,7 @@ class sim():
             print(f"Time to generate animation was {(end-start):.2f} seconds")
 
 
-    def plot(self):
+    def plot(self) -> None:
         display.plot(self.master_bodies_list)
 
 
@@ -338,7 +340,7 @@ class sim():
     ''' FUNCTIONS RUN DURING MAIN LOOP
     '''                    
     
-    def execute_maneuver(self, maneuver_data):
+    def execute_maneuver(self, maneuver_data:dict) -> None:
         target_name = maneuver_data['satellite_name']
         maneuver_name = maneuver_data['maneuver_name']
         delta_v = [float(i) for i in maneuver_data['delta_v']]
@@ -361,12 +363,12 @@ class sim():
         subject.velocity += delta_v[0] * velocity_dir_vector + delta_v[1] * cross_track_vector + delta_v[2] * normal_vector
     
     
-    def update_bodies(self):
+    def update_bodies(self) -> None:
         for body in self.master_bodies_list:
             body.update()
         
             
-    def determine_SOIs(self):
+    def determine_SOIs(self) -> None:
         ''' This runs every step, determing what SOI each body is in
         '''
         soi_names = [body.name for body in self.SOIs.keys()]
@@ -390,7 +392,7 @@ class sim():
     
     ''' MAIN LOOP
     '''
-    def run(self):
+    def run(self) -> None:
         
         #should probably initialise in __init__??
         dt = self.params["SIMULATION_PARAMS"]["initial_dt"]

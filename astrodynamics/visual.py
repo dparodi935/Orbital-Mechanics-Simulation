@@ -1,10 +1,11 @@
 import numpy as np 
+from numpy.typing import NDArray
 import matplotlib.pyplot as plt
 from basic import  return_perifocal_to_bodycentric_equatorial_matrix
 
 #orbital_data = h, i, raan, e, argp, ta
 
-def return_orbital_plotting_points(orbital_shape, mu):
+def return_orbital_plotting_points(orbital_shape:tuple, mu:float) -> NDArray:
     
     #generate perifocal position vectors
     h, e = orbital_shape[0], orbital_shape[3]
@@ -29,23 +30,25 @@ def return_orbital_plotting_points(orbital_shape, mu):
 
     return bodycentric_pos_vectors
 
-def plot_orbit_shape(orbital_shape, mu):
+
+def plot_orbit_shape(orbital_shape:tuple, mu:float) -> None:
     positions = return_orbital_plotting_points(orbital_shape, mu)
     
     plt.plot(positions[0],positions[1])
     
+    
 class Plotter2D():
-    def __init__(self, mu):
+    def __init__(self, mu:float) -> None:
         self.points = []
         self.lines = []
         self.mu = mu
     
-    def add_orbit(self, orbital_shape):
+    def add_orbit(self, orbital_shape:tuple) -> None:
         position_vectors = return_orbital_plotting_points(orbital_shape, self.mu)
         plt.plot(position_vectors[0], position_vectors[1])
         
-    def add_point(self, position):
+    def add_point(self, position:NDArray) -> None:
         plt.plot(position[0],position[1])
     
-    def plot(self):
+    def plot(self) -> None:
         plt.show()

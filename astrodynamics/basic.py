@@ -1,8 +1,9 @@
 import numpy as np
 from numpy.linalg import norm
+from numpy.typing import NDArray
 #orbital_elements = h, i, raan, e, argp, ta
 
-def return_bodycentric_equatorial_to_perifocal_matrix(orbital_shape):
+def return_bodycentric_equatorial_to_perifocal_matrix(orbital_shape:tuple) -> NDArray:
     h, i, raan, e, argp = orbital_shape
     Q = np.zeros((3,3))
     
@@ -17,7 +18,7 @@ def return_bodycentric_equatorial_to_perifocal_matrix(orbital_shape):
     return Q
 
 
-def elements_from_state(mu, r_vector, v_vector):
+def elements_from_state(mu:float, r_vector:NDArray, v_vector:NDArray) -> tuple:
     ''' Assumes reference plane is the x-y plane
     '''
     r = norm(r_vector)
@@ -74,15 +75,15 @@ def elements_from_state(mu, r_vector, v_vector):
 
     return h, i, raan, e, argp, ta
 
-def state_from_elements(mu, orbital_elements):
+def state_from_elements(mu:float, orbital_elements:tuple) -> NDArray:
     """Calculates the state (position, velocity) from the orbital elements
 
     Args:
         mu (float): Gravitational parameter. # m^3 s^-2 kg^-1
-        orbital_elements (list): h (m^2/s), i (rad), raan (rad), e, argp (rad), ta (rad)
+        orbital_elements (tuple): h (m^2/s), i (rad), raan (rad), e, argp (rad), ta (rad)
 
     Returns:
-        tuple [np.array, np.array]: position, velocity. m, m/s
+        tuple [NDArray, NDArray]: position, velocity. m, m/s
     """
     h, i, raan, e, argp, ta = orbital_elements
 
@@ -110,3 +111,7 @@ def state_from_elements(mu, orbital_elements):
     velocity = np.matmul(Q, pf_velocity)
     
     return position, velocity
+
+
+def circular_velocity(mu: float, r: NDArray) -> float:
+    return np.sqrt(mu/r)

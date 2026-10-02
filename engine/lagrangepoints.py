@@ -1,7 +1,9 @@
 import numpy as np
 from scipy.optimize import brentq
+import bodies
+from numpy.typing import NDArray
 
-def return_L_points(body1,body2):
+def return_L_points(body1:bodies.Body, body2:bodies.Body) -> list[NDArray]:
     ''' Returns x-y coordinates of the Lagrange points of a two-body system, centred on the larger mass body1
     '''
     
@@ -15,7 +17,7 @@ def return_L_points(body1,body2):
     
     mu = m2/(m1+m2)
     
-    def func(x, mu):
+    def func(x, mu) -> None:
         x1 = -mu        
         x2 = 1 - mu    
         

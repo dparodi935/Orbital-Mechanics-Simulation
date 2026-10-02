@@ -1,6 +1,7 @@
 from lamberts_problem import lambert
 import planetary_ephemerides as ephem
 import numpy as np
+from numpy.typing import NDArray
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.cm as cm
@@ -21,16 +22,7 @@ NUM_DV_CONTOURS = 30
 yaml_constants = utility.open_yaml_file(SCRIPT_DIR, "constants")
 
 
-def circular_velocity(mu: float, r: np.ndarray):
-    return np.sqrt(mu/r)
-
-
-def return_transfer_orbit(position_1: np.ndarray, position_2: np.ndarray, tof: float):
-    orbital_elements = lambert(mu, position_1, position_2, tof, direction="pro")
-    return orbital_elements
-
-
-def caculate_buffer(body1_name, body2_name):
+def caculate_buffer(body1_name:str, body2_name:str) -> tuple[dt.datetime, dt.datetime]:
     # chosen  buffers for Mars are 1 and 15 months
     mars_buffer_days_initial = 30 * 1
     mars_buffer_days_final = 30 * 15
@@ -53,10 +45,16 @@ def caculate_buffer(body1_name, body2_name):
     return buffer_days_initial_dt, buffer_days_final_dt
 
 
+def return_ang_rate(bodyname:str) -> float:
+    data = yaml_constants["SOL_DATA"][bodyname]
+    period = data["period"]
+    ang_rate = 2 * np.pi / period
+    return ang_rate
 
-def synodic_period(b1_period, b2_period):
-    body1_ang_rate = 2 * np.pi / b1_period
-    body2_ang_rate = 2 * np.pi / b2_period
+
+def synodic_period(body1name:str, body2name:str) -> dt.datetime:
+    body1_ang_rate = return_ang_rate(body1name)
+    body2_ang_rate = return_ang_rate(body2name)
     
     rel_ang_rate = abs(body1_ang_rate - body2_ang_rate)
     synodic_period = 2*np.pi/rel_ang_rate 
@@ -65,13 +63,8 @@ def synodic_period(b1_period, b2_period):
     return synodic_period_dt
 
 
-def init_time_arrays(initial_dep_time, body1_name, body2_name, N=100, N_syn=1):        
-    b1_data, b2_data = yaml_constants["SOL_DATA"][body1_name], yaml_constants["SOL_DATA"][body2_name]
-    b1_sma, b1_period = b1_data["sma"], b1_data["period"]
-    b2_sma, b2_period = b2_data["sma"], b2_data["period"]
-    
-    syn_period_dt = synodic_period(b1_period, b2_period) * N_syn
-    
+def init_time_arrays(initial_dep_time:dt.datetime, body1_name:str, body2_name:str, N:int=100, N_syn:int=1) -> tuple[NDArray, NDArray]:        
+    syn_period_dt = synodic_period(body1_name, body2_name) * N_syn
     final_dep_time = initial_dep_time + syn_period_dt
     
     buffer_dt, end_buffer_dt = caculate_buffer(body1_name, body2_name)
@@ -87,29 +80,29 @@ def init_time_arrays(initial_dep_time, body1_name, body2_name, N=100, N_syn=1):
     return dep_times_jd, arr_times_jd
 
 
-def init_vel_arrays(dep_times, arr_times):
-    N_arr, N_dep = len(arr_times), len(dep_times)
-    v_1_values = np.full((N_arr, N_dep, 3), fill_value=np.nan)
-    v_2_values = np.full((N_arr, N_dep, 3), fill_value=np.nan)
-    dep_delta_v_values = np.full((N_arr, N_dep), fill_value=np.nan)
-    arr_delta_v_values = np.full((N_arr, N_dep), fill_value=np.nan)
-    delta_v_values = np.full((N_arr, N_dep), fill_value=np.nan)
+def init_vel_arrays(times:NDArray) -> tuple[NDArray]:
+    N = len(times)
+    v_1_values = np.full((N, N, 3), fill_value=np.nan)
+    v_2_values = np.full((N, N, 3), fill_value=np.nan)
+    dep_delta_v_values = np.full((N, N), fill_value=np.nan)
+    arr_delta_v_values = np.full((N, N), fill_value=np.nan)
+    delta_v_values = np.full((N, N), fill_value=np.nan)
     return v_1_values, v_2_values, dep_delta_v_values, arr_delta_v_values, delta_v_values
 
 
-def init_body_state_arrays(times_array, source, body_name):
+def init_body_state_arrays(times_array:NDArray, source:str, body_name:str) -> NDArray:
     b_state_array = ephem.return_planet_state(source, body_name, times_array)    
     return b_state_array
  
 
-def cap_delta_v_values(delta_v_values):
+def cap_delta_v_values(delta_v_values:NDArray) -> NDArray:
     min_dv = np.min(np.nan_to_num(delta_v_values,nan=1e+99))
     dv_cap = min_dv * DV_CAP_FACTOR
     delta_v_values[delta_v_values > dv_cap] = np.nan
     return delta_v_values
 
 
-def print_dv_min(delta_v_values, dep_times_jd, arr_times_jd):
+def print_dv_min(delta_v_values:NDArray, dep_times_jd:NDArray, arr_times_jd:NDArray) -> None:
     N = len(arr_times_jd)
     cleaned_dv_vals = np.nan_to_num(delta_v_values,nan=1e+99)
     
@@ -130,7 +123,7 @@ def print_dv_min(delta_v_values, dep_times_jd, arr_times_jd):
     )
 
 
-def porkchop_plotter(dep_times_jd, arr_times_jd, delta_v_values, body1_name, body2_name, savefig=True, plot=True):
+def porkchop_plotter(dep_times_jd:NDArray, arr_times_jd:NDArray, delta_v_values:NDArray, body1_name:str, body2_name:str, savefig:bool=True, plot:bool=True) -> None:
     """
     Generates a classical line-contoured porkchop plot matching standard astrodynamics 
     software styles, complete with Delta-V line contours, time-of-flight 
@@ -207,10 +200,9 @@ def porkchop_plotter(dep_times_jd, arr_times_jd, delta_v_values, body1_name, bod
         plt.show()
         
     plt.close()
-    
   
 
-def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth", N:int=400, N_syn:int=1, savefig:bool=False, plot:bool=False):
+def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth", N:int=400, N_syn:int=1, savefig:bool=False, plot:bool=False) -> None:
     """Saves and creates a porkchop plot for travel between any two planets
 
     Args:
@@ -228,7 +220,7 @@ def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth
     dep_times_jd, arr_times_jd = init_time_arrays(initial_dep_time, body1_name, body2_name, N, N_syn)
     print("Created departure and arrival time arrays")
     
-    v_1_values, v_2_values, dep_delta_v_values, arr_delta_v_values, delta_v_values = init_vel_arrays(dep_times_jd, arr_times_jd)
+    v_1_values, v_2_values, dep_delta_v_values, arr_delta_v_values, delta_v_values = init_vel_arrays(dep_times_jd)
     
     b1_state_array = init_body_state_arrays(dep_times_jd, SOURCE, body1_name)
     b2_state_array = init_body_state_arrays(arr_times_jd, SOURCE, body2_name)
@@ -271,7 +263,7 @@ def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth
     porkchop_plotter(dep_times_jd, arr_times_jd, delta_v_values, body1_name, body2_name, savefig=savefig, plot=plot)
     
 
-def format_time(time_str):
+def format_time(time_str: str) -> dt.datetime:
     split_str = time_str.split("/")
     day_str = split_str[0]
     month_str = split_str[1]
@@ -296,7 +288,7 @@ def format_time(time_str):
     return initial_dep_time
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--init-time", type=str, default="01/01/2017", help="The initial departure date in the format DD/MM/YYYY")
     parser.add_argument("--target", type=str, required=True, help="The target planet")

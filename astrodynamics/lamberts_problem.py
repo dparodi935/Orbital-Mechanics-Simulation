@@ -1,7 +1,8 @@
 from scipy.optimize import brentq
 import numpy as np
+from numpy.typing import NDArray
 
-def return_delta_theta(r_1,r_2,direction="pro"):
+def return_delta_theta(r_1:NDArray, r_2:NDArray, direction:str="pro") -> float:
     cross = np.cross(r_1, r_2)
     d = np.dot(r_1, r_2)
     c = np.linalg.norm(cross)
@@ -19,17 +20,17 @@ def return_delta_theta(r_1,r_2,direction="pro"):
         elif cross_z >= 0:
             return 2 * np.pi - i_tan
     else:
-        print("Error in direction variable")
+        raise ValueError("Invalid value for 'direction' variable. Must be 'pro' or 'retro'")
 
-def return_A(delta_theta, r_1, r_2):
+
+def return_A(delta_theta:float, r_1:NDArray, r_2:NDArray) -> float:
     r_1_mag = np.linalg.norm(r_1)
     r_2_mag = np.linalg.norm(r_2)
 
-    #return np.sin(delta_theta) * np.sqrt((r_1_mag * r_2_mag)/(1 - np.cos(delta_theta)))
     return np.sqrt(2 * r_1_mag * r_2_mag) * np.cos(0.5*delta_theta)
 
 
-def return_C(z):
+def return_C(z:float) -> float:
     sqrt_z = np.sqrt(abs(z))
     
     if z>0:
@@ -40,7 +41,7 @@ def return_C(z):
         return 0.5    
 
 
-def return_S(z):
+def return_S(z:float) -> float:
     sqrt_z = np.sqrt(abs(z))
 
     if z>0:
@@ -51,7 +52,7 @@ def return_S(z):
         return 1/6
     
     
-def return_y(z, r_1, r_2, A, S, C):
+def return_y(z:float, r_1:NDArray, r_2:NDArray, A:float, S:float, C:float) -> float:
     r_1_mag = np.linalg.norm(r_1)
     r_2_mag = np.linalg.norm(r_2)
     y = r_1_mag + r_2_mag + A * (z*S-1)/(np.sqrt(C))
@@ -64,7 +65,7 @@ def return_y(z, r_1, r_2, A, S, C):
     return y
 
 
-def return_lagrange_coefficients(mu,r_1,r_2,A,S,C,y,z):
+def return_lagrange_coefficients(mu:float, r_1:NDArray, r_2:NDArray, A:float, S:float, C:float, y:float, z:float) -> tuple[float]:
     r_1_mag = np.linalg.norm(r_1)
     r_2_mag = np.linalg.norm(r_2)
 
@@ -73,21 +74,10 @@ def return_lagrange_coefficients(mu,r_1,r_2,A,S,C,y,z):
     f_dot = np.sqrt(mu)/(r_1_mag*r_2_mag) * np.sqrt(y/C) * (z*S - 1)
     g_dot = 1 - y/r_2_mag
 
-    return f,g,f_dot,g_dot
+    return f, g, f_dot, g_dot
 
-def F(z, r_1, r_2, delta_t, mu, direction):
-    '''Parameters
-    z : scalar
-        Related to universal variable chi
-    r_1 : 3x1 vector
-        First position vector
-    r_2 : 3x1 vector
-        Second position vector
-    delta_t : float
-        Time of flight between the two positions
-    direction : string
-        Whether trajectory is prograde or retrograde
-    '''
+
+def F(z:float, r_1:NDArray, r_2:NDArray, delta_t:float, mu:float, direction:str) -> float:
     S = return_S(z)
     C = return_C(z)
     
@@ -98,7 +88,8 @@ def F(z, r_1, r_2, delta_t, mu, direction):
     
     return ((y/C)**1.5)*S + A * np.sqrt(y) - np.sqrt(mu) * delta_t
 
-def return_lower_z_bound(r_1, r_2, delta_t, mu, direction):
+
+def return_lower_z_bound(r_1:NDArray, r_2:NDArray, delta_t:float, mu:float, direction:str) -> float:
     r_1_n = np.linalg.norm(r_1)
     r_2_n = np.linalg.norm(r_2)
     
@@ -123,13 +114,13 @@ def return_lower_z_bound(r_1, r_2, delta_t, mu, direction):
     return a
     
     
-def lambert(mu, r_1, r_2, delta_t, direction="pro", xtol=1e-12):
+def lambert(mu:float, r_1:NDArray, r_2:NDArray, delta_t:float, direction:str="pro", xtol:float=1e-12) -> tuple[NDArray, NDArray]:
     """Return the final and inital velocity of a trajectory given two positions and a specified time of flight
 
     Args:
         mu (float): Standard gravitational parameter (G*M) of central body. m^3 s^-2 kg^-1
-        r_1 (np.ndarray): Array of shape (3,) representing the initial position of the body in Cartesian coordinates. Metres
-        r_2 (np.ndarray): Array of shape (3,) representing the final position of the body in Cartesian coordinates. Metres
+        r_1 (NDArray): Array of shape (3,) representing the initial position of the body in Cartesian coordinates. Metres
+        r_2 (NDArray): Array of shape (3,) representing the final position of the body in Cartesian coordinates. Metres
         delta_t (float): Time of flight between the  two specified positions. Seconds
         direction (str, optional): Given [0,0,1] as "North", the direction of the orbit, prograde or retrograde. Defaults to "pro".
         xtol (float): Precision variable for Lambert's solver
