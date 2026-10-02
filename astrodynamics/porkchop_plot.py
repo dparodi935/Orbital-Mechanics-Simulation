@@ -123,6 +123,14 @@ def print_dv_min(delta_v_values:NDArray, dep_times_jd:NDArray, arr_times_jd:NDAr
     )
 
 
+def return_porkchop_name(body1_name:str, body2_name:str, N:int, N_syn:int, init_dep_dt:dt.datetime) -> str:
+    mo = str(init_dep_dt.month)
+    if len(mo) == 1: mo = "0" + mo
+    init_dep_str = f"{mo}{init_dep_dt.year}"
+    img_name =  f"{body1_name}_{body2_name}_{N}_{N_syn}_{init_dep_str}_porkchop"        
+    return img_name
+
+
 def porkchop_plotter(dep_times_jd:NDArray, arr_times_jd:NDArray, delta_v_values:NDArray, body1_name:str, body2_name:str, savefig:bool=True, plot:bool=True) -> None:
     """
     Generates a classical line-contoured porkchop plot matching standard astrodynamics 
@@ -189,8 +197,13 @@ def porkchop_plotter(dep_times_jd:NDArray, arr_times_jd:NDArray, delta_v_values:
     ax.set_ylabel("Arrival Date")
     ax.set_title(f"{body1_name.title()}-{body2_name.title()} Porkchop Plot")
 
+
     if savefig: 
-        img_name =  f"{body1_name}_{body2_name}_{N}_porkchop"        
+        initial_dep_dt = dep_times_dt[0]
+        dep_range_dt = dep_times_dt[-1] - dep_times_dt[0]
+        syn_dt = synodic_period(body1_name, body2_name)
+        N_syn = round(dep_range_dt.total_seconds()/syn_dt.total_seconds())
+        img_name = return_porkchop_name(body1_name, body2_name, N, N_syn, initial_dep_dt)      
         filepath = os.path.join(DATA_ROOT, f"{img_name}.png")
         plt.savefig(filepath, dpi=300)
         print(f"Succesfully saved porkchop plot to {filepath}")
