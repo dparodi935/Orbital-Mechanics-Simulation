@@ -13,17 +13,20 @@ import matplotlib.colors as mcolors
 import datetime as dt
 import os, tqdm
 
+from importlib.resources import files
+
+data_path = files("astro_tools.data").joinpath("constants.yaml")
+yaml_constants = utility.open_yaml_file(data_path)
+
 G = constants.G
 mu = constants.solar_mass * G
 MONTH = constants.day * 30.0
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-DATA_DIR = os.path.join(SCRIPT_DIR,"..", "data")
-OUTPUT_ROOT = os.path.join(SCRIPT_DIR, "..", "outputs")
+OUTPUT_ROOT = os.path.join(SCRIPT_DIR, "..", "..", "..", "outputs")
 SOURCE = "spice"
 DV_CAP_FACTOR = 2
 NUM_DV_CONTOURS = 30
 
-yaml_constants = utility.open_yaml_file(DATA_DIR, "constants")
 
 
 def caculate_buffer(body1_name:str, body2_name:str) -> tuple[dt.datetime, dt.datetime]:
