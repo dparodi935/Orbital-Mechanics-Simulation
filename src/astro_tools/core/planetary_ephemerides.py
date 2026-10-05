@@ -6,16 +6,13 @@ from scipy.optimize import newton
 from astroquery.jplhorizons import Horizons
 from jplephem.spk import SPK
 import astro_tools.core.astro_time as astro_time
-import astro_tools.core.basic
+import astro_tools.core.basic as basic
 from astro_tools.data import constants
+from importlib.resources import files
 
-
-SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-DATA_DIR = os.path.join(SCRIPT_DIR,"..", "data")
-
-EPHEM_CSV_FPATH = os.path.join(DATA_DIR, "planetary_orbital_elements")
-SPICE_FPATH = os.path.join(DATA_DIR, "spice_data")
-ID_CSV_FPATH = os.path.join(DATA_DIR, f'horizon_ids.csv')  
+EPHEM_CSV_FPATH = files("astro_tools.data.planetary_orbital_elements")
+SPICE_FPATH = files("astro_tools.data.spice_data")
+ID_CSV_FPATH = files("astro_tools.data").joinpath('horizon_ids.csv')
 
 
 def read_table(table_choice: str) -> pd.DataFrame:
@@ -26,8 +23,8 @@ def read_table(table_choice: str) -> pd.DataFrame:
     else:
         raise ValueError("Invalid choice for planetary orbital elements table. Must be 'short' or 'long'")
     
+    csv_filepath = EPHEM_CSV_FPATH.joinpath(f"{csv_name}.csv")
     # sets the planet column as the index, first two rows as header
-    csv_filepath = os.path.join(EPHEM_CSV_FPATH, f"{csv_name}.csv")
     df = pd.read_csv(csv_filepath, index_col=0, header=[0,1])
     return df
 
@@ -238,7 +235,8 @@ def state_from_horizons(target:str, jd_array:float) -> NDArray:
 
 
 def retrieve_SPK_kernel(spk_name:str) -> SPK:
-    knl_fpath = os.path.join(SPICE_FPATH, f"{spk_name}.bsp")
+    #knl_fpath = os.path.join(SPICE_FPATH, f"{spk_name}.bsp")
+    knl_fpath = SPICE_FPATH.joinpath(f"{spk_name}.bsp")
     kernel = SPK.open(knl_fpath)
     return kernel
 
@@ -353,3 +351,5 @@ def return_planet_state(source: str, planet:str, jd_array:NDArray[np.float64] | 
         raise ValueError(f"Invalid source '{source}' for planetary states")
     
     return state_array 
+
+
