@@ -353,3 +353,18 @@ def return_planet_state(source: str, planet:str, jd_array:NDArray[np.float64] | 
     return state_array 
 
 
+# DEBUGGING
+if __name__ == "__main__":
+    import datetime as dt
+    epoch2000 = dt.datetime(2000, 1, 1)
+    y1000 = dt.datetime(1000, 1, 1)
+    epoch2000_jd = astro_time.datetime_to_jd(epoch2000)
+    y1000_jd = astro_time.datetime_to_jd(y1000)
+    
+    print(return_planet_state("horizons", "earth", epoch2000_jd))
+    print(return_planet_state("tabulated_elements", "earth", epoch2000_jd))
+    print(return_planet_state("spice", "earth", epoch2000_jd))
+    
+    print(return_planet_state("horizons", "earth", y1000_jd))
+    print(return_planet_state("tabulated_elements", "earth", y1000_jd))
+    
