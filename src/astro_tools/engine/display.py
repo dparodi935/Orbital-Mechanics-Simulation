@@ -6,7 +6,6 @@ sys.path.append(os.path.join(script_dir, ".."))
 
 
 import matplotlib
-#matplotlib.use('Qt5Agg') 
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -17,7 +16,7 @@ from matplotlib.figure import Figure
 from matplotlib.text import Text
 from functools import partial
 from . import calculations
-from src.data import constants
+from astro_tools.data import constants
 import numpy as np
 from numpy.typing import NDArray
 

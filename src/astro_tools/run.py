@@ -1,4 +1,4 @@
-import engine.simulation as simulation
+import astro_tools.engine.simulation as simulation
 
 if __name__ == "__main__":
     sim = simulation.sim()

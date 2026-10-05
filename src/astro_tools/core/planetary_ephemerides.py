@@ -5,9 +5,9 @@ import numpy as np
 from scipy.optimize import newton
 from astroquery.jplhorizons import Horizons
 from jplephem.spk import SPK
-import src.core.astro_time as astro_time
-import src.core.basic
-from src.data import constants
+import astro_tools.core.astro_time as astro_time
+import astro_tools.core.basic
+from astro_tools.data import constants
 
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))

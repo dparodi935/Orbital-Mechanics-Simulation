@@ -1,8 +1,8 @@
 from .lamberts_problem import lambert
-import src.core.planetary_ephemerides as ephem
-from src.data import constants
-import src.utils.utility as utility 
-import src.core.astro_time as astro_time
+import astro_tools.core.planetary_ephemerides as ephem
+from astro_tools.data import constants
+import astro_tools.utils.utility as utility 
+import astro_tools.core.astro_time as astro_time
 
 import numpy as np
 from numpy.typing import NDArray
@@ -11,7 +11,7 @@ import matplotlib.dates as mdates
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import datetime as dt
-import os, argparse, tqdm
+import os, tqdm
 
 G = constants.G
 mu = constants.solar_mass * G

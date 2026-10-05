@@ -1,7 +1,7 @@
 import numpy as np 
 from numpy.typing import NDArray
 import matplotlib.pyplot as plt
-from src.core.basic import  return_perifocal_to_bodycentric_equatorial_matrix
+from astro_tools.core.basic import  return_perifocal_to_bodycentric_equatorial_matrix
 
 #orbital_data = h, i, raan, e, argp, ta
 

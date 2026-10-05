@@ -1,5 +1,6 @@
-from astrodynamics.porkchop_plot import porkchop
+from astro_tools.astrodynamics.porkchop_plot import porkchop
 import argparse
+import datetime as dt
 
 def format_time(time_str: str) -> dt.datetime:
     split_str = time_str.split("/")
@@ -26,8 +27,7 @@ def format_time(time_str: str) -> dt.datetime:
     return initial_dep_time
 
 
-
-def porkchop_cli() -> None:
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--init-time", type=str, default="01/01/2017", help="The initial departure date in the format DD/MM/YYYY")
     parser.add_argument("--target", type=str, required=True, help="The target planet")
@@ -42,3 +42,6 @@ def porkchop_cli() -> None:
     initial_dep_time = format_time(a.init_time)
     
     porkchop(initial_dep_time, a.target, body1_name=a.origin, N=a.N, N_syn=a.N_syn, savefig=a.save_fig, plot=a.plot)
+
+if __name__ == "__main__":
+    main()
