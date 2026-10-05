@@ -1,5 +1,9 @@
-from lamberts_problem import lambert
-import planetary_ephemerides as ephem
+from .lamberts_problem import lambert
+import src.core.planetary_ephemerides as ephem
+from src.data import constants
+import src.utils.utility as utility 
+import src.core.astro_time as astro_time
+
 import numpy as np
 from numpy.typing import NDArray
 import matplotlib.pyplot as plt
@@ -7,19 +11,19 @@ import matplotlib.dates as mdates
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import datetime as dt
-import constants, utility, sidereal
 import os, argparse, tqdm
 
 G = constants.G
 mu = constants.solar_mass * G
 MONTH = constants.day * 30.0
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-DATA_ROOT = os.path.join(SCRIPT_DIR, "..", "outputs")
+DATA_DIR = os.path.join(SCRIPT_DIR,"..", "data")
+OUTPUT_ROOT = os.path.join(SCRIPT_DIR, "..", "outputs")
 SOURCE = "spice"
 DV_CAP_FACTOR = 2
 NUM_DV_CONTOURS = 30
 
-yaml_constants = utility.open_yaml_file(SCRIPT_DIR, "constants")
+yaml_constants = utility.open_yaml_file(DATA_DIR, "constants")
 
 
 def caculate_buffer(body1_name:str, body2_name:str) -> tuple[dt.datetime, dt.datetime]:
@@ -71,8 +75,8 @@ def init_time_arrays(initial_dep_time:dt.datetime, body1_name:str, body2_name:st
     initial_arr_time = initial_dep_time + buffer_dt
     final_arr_time = final_dep_time + end_buffer_dt
 
-    init_dep_jd, final_dep_jd = sidereal.datetime_to_jd(initial_dep_time), sidereal.datetime_to_jd(final_dep_time)
-    init_arr_jd, final_arr_jd = sidereal.datetime_to_jd(initial_arr_time), sidereal.datetime_to_jd(final_arr_time)
+    init_dep_jd, final_dep_jd = astro_time.datetime_to_jd(initial_dep_time), astro_time.datetime_to_jd(final_dep_time)
+    init_arr_jd, final_arr_jd = astro_time.datetime_to_jd(initial_arr_time), astro_time.datetime_to_jd(final_arr_time)
     
     dep_times_jd = np.linspace(init_dep_jd, final_dep_jd, N)
     arr_times_jd = np.linspace(init_arr_jd, final_arr_jd, N)
@@ -108,8 +112,8 @@ def print_dv_min(delta_v_values:NDArray, dep_times_jd:NDArray, arr_times_jd:NDAr
     
     min_dv = np.min(cleaned_dv_vals)
     min_idx = np.argmin(cleaned_dv_vals)
-    min_dep_dt = sidereal.jd_to_datetime(dep_times_jd[min_idx % N])
-    min_arr_dt = sidereal.jd_to_datetime(arr_times_jd[min_idx // N])
+    min_dep_dt = astro_time.jd_to_datetime(dep_times_jd[min_idx % N])
+    min_arr_dt = astro_time.jd_to_datetime(arr_times_jd[min_idx // N])
         
     tof_months = (min_arr_dt - min_dep_dt).total_seconds()/MONTH
     
@@ -137,7 +141,7 @@ def porkchop_plotter(dep_times_jd:NDArray, arr_times_jd:NDArray, delta_v_values:
     software styles, complete with Delta-V line contours, time-of-flight 
     contours in months, and a minimum Delta-V marker.
     """
-    J_MONTH  = sidereal.J_YR_DAYS/12
+    J_MONTH  = astro_time.J_YR_DAYS/12
     N = len(dep_times_jd)
     
     # Generate 2D mesh grids for time of flight calculation in months
@@ -145,8 +149,8 @@ def porkchop_plotter(dep_times_jd:NDArray, arr_times_jd:NDArray, delta_v_values:
     tof_grid_months = (Y_jd - X_jd) / J_MONTH
 
     # Convert Julian Date axes to Python datetimes for Matplotlib date formatting
-    dep_times_dt = [sidereal.jd_to_datetime(jd) for jd in dep_times_jd]
-    arr_times_dt = [sidereal.jd_to_datetime(jd) for jd in arr_times_jd]
+    dep_times_dt = [astro_time.jd_to_datetime(jd) for jd in dep_times_jd]
+    arr_times_dt = [astro_time.jd_to_datetime(jd) for jd in arr_times_jd]
 
     fig, ax = plt.subplots(figsize=(10, 8))
 
@@ -204,7 +208,7 @@ def porkchop_plotter(dep_times_jd:NDArray, arr_times_jd:NDArray, delta_v_values:
         syn_dt = synodic_period(body1_name, body2_name)
         N_syn = round(dep_range_dt.total_seconds()/syn_dt.total_seconds())
         img_name = return_porkchop_name(body1_name, body2_name, N, N_syn, initial_dep_dt)      
-        filepath = os.path.join(DATA_ROOT, f"{img_name}.png")
+        filepath = os.path.join(OUTPUT_ROOT, f"{img_name}.png")
         plt.savefig(filepath, dpi=300)
         print(f"Succesfully saved porkchop plot to {filepath}")
     
@@ -251,7 +255,7 @@ def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth
             b2_pos = b2_positions[i_arr]
             
             tof_jd = arr_time - dep_time
-            tof = tof_jd * sidereal.JD_SECONDS
+            tof = tof_jd * astro_time.JD_SECONDS
             
             if tof <= 0:
                 continue
@@ -275,48 +279,3 @@ def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth
 
     porkchop_plotter(dep_times_jd, arr_times_jd, delta_v_values, body1_name, body2_name, savefig=savefig, plot=plot)
     
-
-def format_time(time_str: str) -> dt.datetime:
-    split_str = time_str.split("/")
-    day_str = split_str[0]
-    month_str = split_str[1]
-    year = int(split_str[2])
-    
-    # validation
-    if len(day_str) != 2: 
-        raise ValueError("Day must be in format 'XX'")
-    if len(month_str) != 2: 
-            raise ValueError("Day must be in format 'XX'")
-    
-    day = int(day_str)
-    month = int(month_str)
-    
-    if day < 1 or day > 31:
-        raise ValueError("Enter valid value for the day")
-    if month < 1  or month > 12:
-        raise ValueError("Enter valid value for the month")
-    
-    initial_dep_time = dt.datetime(year, month, day)
-    
-    return initial_dep_time
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--init-time", type=str, default="01/01/2017", help="The initial departure date in the format DD/MM/YYYY")
-    parser.add_argument("--target", type=str, required=True, help="The target planet")
-    parser.add_argument("--origin", type=str, default="earth", help="The origin planet")
-    parser.add_argument("--N", type=int, default=500, help="The number of departure and arrival dates. Determines the number of points")
-    parser.add_argument("--N-syn", type=int, default=1, help="The number of synodic periods to make the plot over")
-    parser.add_argument("--save-fig", action="store_true", help="Whether or not to save an image of the plot in the outputs folder")
-    parser.add_argument("--plot", action="store_true", help="Whether or not to immediately display the plot as a popup")
-
-    a = parser.parse_args()
-    
-    initial_dep_time = format_time(a.init_time)
-    
-    porkchop(initial_dep_time, a.target, body1_name=a.origin, N=a.N, N_syn=a.N_syn, savefig=a.save_fig, plot=a.plot)
-
-
-if __name__ == "__main__":
-    main()

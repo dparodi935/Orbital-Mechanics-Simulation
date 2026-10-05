@@ -2,18 +2,20 @@ import sys, os
 script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(script_dir, ".."))
 
-from astrodynamics import constants
-import calculations, display, bodies
-import yaml
+from data import constants
+from . import calculations, display, bodies
+import utils.utility as utility 
 import numpy as np
 from numpy.typing import NDArray
+from typing import Any
 from time import perf_counter
-import lagrangepoints as lagrange
+from . import lagrangepoints as lagrange
 import os 
 
 class sim():
     
     def __init__(self) -> None:
+        print("Configuring Simulation")
         self.folder_path = os.path.dirname(os.path.abspath(__file__))
 
         self.params = self.open_config_file('config')
@@ -57,9 +59,8 @@ class sim():
     ''' SIMULATION INITIALISATION
     '''
     def open_config_file(self, name:str) -> Any:
-        config_file_path = os.path.join(self.folder_path,f'{name}.yaml')
-        with open(config_file_path, 'r') as file:
-            return yaml.safe_load(file)
+        yaml_file = utility.open_yaml_file(self.folder_path, name)
+        return yaml_file
     
     
     def generate_frame(self) -> None:

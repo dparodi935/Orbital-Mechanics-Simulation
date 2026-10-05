@@ -1,0 +1,8 @@
+astroquery==0.4.11
+jplephem==2.24
+matplotlib==3.11.2
+numpy==2.5.3
+pandas==3.0.6
+PyYAML==6.0.3
+scipy==1.18.1
+tqdm==4.70.1

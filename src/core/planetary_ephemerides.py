@@ -1,21 +1,22 @@
-import os, sys
+import os
 import pandas as pd
 from numpy.typing import NDArray
 import numpy as np
 from scipy.optimize import newton
 from astroquery.jplhorizons import Horizons
 from jplephem.spk import SPK
-import sidereal, basic
-import constants
+import src.core.astro_time as astro_time
+import src.core.basic
+from src.data import constants
 
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+DATA_DIR = os.path.join(SCRIPT_DIR,"..", "data")
 
-csv_folderpath = os.path.join(SCRIPT_DIR, "planetary_orbital_elements")
-spice_folderpath = os.path.join(SCRIPT_DIR, "spice_data")
+EPHEM_CSV_FPATH = os.path.join(DATA_DIR, "planetary_orbital_elements")
+SPICE_FPATH = os.path.join(DATA_DIR, "spice_data")
+ID_CSV_FPATH = os.path.join(DATA_DIR, f'horizon_ids.csv')  
 
-HORIZONS_IDS_FILENAME = 'horizon_ids'
-ID_CSV_FPATH = os.path.join(SCRIPT_DIR, f'{HORIZONS_IDS_FILENAME}.csv')  
 
 def read_table(table_choice: str) -> pd.DataFrame:
     if table_choice == "short":
@@ -26,7 +27,7 @@ def read_table(table_choice: str) -> pd.DataFrame:
         raise ValueError("Invalid choice for planetary orbital elements table. Must be 'short' or 'long'")
     
     # sets the planet column as the index, first two rows as header
-    csv_filepath = os.path.join(csv_folderpath, f"{csv_name}.csv")
+    csv_filepath = os.path.join(EPHEM_CSV_FPATH, f"{csv_name}.csv")
     df = pd.read_csv(csv_filepath, index_col=0, header=[0,1])
     return df
 
@@ -93,7 +94,7 @@ def orbital_elements_from_ephem(df: pd.DataFrame, planet: str, JD: float) -> tup
     DEG_2_RAD = 0.01745329
     
     # calculate Julian centuries
-    T_0_cy = sidereal.return_t0(JD)
+    T_0_cy = astro_time.return_t0(JD)
     
     # calculate the gravitational parameter mu
     mu = constants.G * constants.solar_mass
@@ -151,7 +152,7 @@ def orbital_elements_from_ephem(df: pd.DataFrame, planet: str, JD: float) -> tup
 
 
 def state_from_ephem(planet:str, jd_array:NDArray) -> NDArray:
-    jd_idx = np.argmax(abs(jd_array-sidereal.J2000_JD))
+    jd_idx = np.argmax(abs(jd_array-astro_time.J2000_JD))
     jd_limit =  jd_array[jd_idx]
     table_choice = select_table(jd=jd_limit)
 
@@ -237,7 +238,7 @@ def state_from_horizons(target:str, jd_array:float) -> NDArray:
 
 
 def retrieve_SPK_kernel(spk_name:str) -> SPK:
-    knl_fpath = os.path.join(spice_folderpath, f"{spk_name}.bsp")
+    knl_fpath = os.path.join(SPICE_FPATH, f"{spk_name}.bsp")
     kernel = SPK.open(knl_fpath)
     return kernel
 

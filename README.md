@@ -9,4 +9,4 @@ Features:
 
 
 This video demonstrates how a lunar flyby can be used to significantly speed up a spacecraft's return to Earth
-![Video Demo of Simulator](https://raw.githubusercontent.com/dparodi935/Orbital-Mechanics-Simulation/main/gravity_sim_demo.gif)
+![Video Demo of Simulator](https://raw.githubusercontent.com/dparodi935/Orbital-Mechanics-Simulation/main/outputs/gravity_sim_demo.gif)

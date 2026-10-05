@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.optimize import brentq
-import bodies
+from . import bodies
 from numpy.typing import NDArray
 
 def return_L_points(body1:bodies.Body, body2:bodies.Body) -> list[NDArray]:

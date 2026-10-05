@@ -1,10 +1,12 @@
 import sys, os
+
+from . import bodies
 script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(script_dir, ".."))
 
 
 import matplotlib
-matplotlib.use('Qt5Agg') 
+#matplotlib.use('Qt5Agg') 
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -14,9 +16,8 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.text import Text
 from functools import partial
-import calculations 
-import bodies
-from astrodynamics import constants
+from . import calculations
+from src.data import constants
 import numpy as np
 from numpy.typing import NDArray
 
