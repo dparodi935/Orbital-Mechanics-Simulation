@@ -22,6 +22,7 @@ dependencies = [
 
 [project.scripts]
 porkchop = "astro_tools.cli.porkchop_cli:main"
+simulation = "astro_tools.cli.simulation_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/astro_tools"]
