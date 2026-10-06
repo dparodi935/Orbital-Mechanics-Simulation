@@ -1,8 +1,8 @@
 from .lamberts_problem import lambert
-import astro_tools.core.planetary_ephemerides as ephem
-from astro_tools.data import constants
-import astro_tools.utils.utility as utility 
-import astro_tools.core.astro_time as astro_time
+import src.astro_tools.core.planetary_ephemerides as ephem
+from src.astro_tools.data import constants
+import src.astro_tools.utils.utility as utility 
+import src.astro_tools.core.astro_time as astro_time
 
 import numpy as np
 from numpy.typing import NDArray
@@ -12,17 +12,16 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import datetime as dt
 import os, tqdm
+from pathlib import Path
 
 from importlib.resources import files
 
-data_path = files("astro_tools.data").joinpath("constants.yaml")
+data_path = files("src.astro_tools.data").joinpath("constants.yaml")
 yaml_constants = utility.open_yaml_file(data_path)
 
 G = constants.G
 mu = constants.solar_mass * G
 MONTH = constants.day * 30.0
-SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-OUTPUT_ROOT = os.path.join(SCRIPT_DIR, "..", "..", "..", "outputs")
 SOURCE = "spice"
 DV_CAP_FACTOR = 2
 NUM_DV_CONTOURS = 30
@@ -138,7 +137,21 @@ def return_porkchop_name(body1_name:str, body2_name:str, N:int, N_syn:int, init_
     return img_name
 
 
-def porkchop_plotter(dep_times_jd:NDArray, arr_times_jd:NDArray, delta_v_values:NDArray, body1_name:str, body2_name:str, savefig:bool=True, plot:bool=True) -> None:
+def save_plot(savepath:Path, dep_times_dt:list[dt.datetime], body1_name:str, body2_name:str):
+    N = len(dep_times_dt)
+    initial_dep_dt = dep_times_dt[0]
+    dep_range_dt = dep_times_dt[-1] - dep_times_dt[0]
+    syn_dt = synodic_period(body1_name, body2_name)
+    N_syn = round(dep_range_dt.total_seconds()/syn_dt.total_seconds())
+    
+    img_name = return_porkchop_name(body1_name, body2_name, N, N_syn, initial_dep_dt)      
+    filepath = savepath / f"{img_name}.png" 
+    plt.savefig(filepath, dpi=300)
+    
+    print(f"Succesfully saved porkchop plot to {filepath.resolve()}")
+
+
+def porkchop_plotter(dep_times_jd:NDArray, arr_times_jd:NDArray, delta_v_values:NDArray, body1_name:str, body2_name:str, savepath:Path=Path.cwd(), plot:bool=True) -> None:
     """
     Generates a classical line-contoured porkchop plot matching standard astrodynamics 
     software styles, complete with Delta-V line contours, time-of-flight 
@@ -205,15 +218,7 @@ def porkchop_plotter(dep_times_jd:NDArray, arr_times_jd:NDArray, delta_v_values:
     ax.set_title(f"{body1_name.title()}-{body2_name.title()} Porkchop Plot")
 
 
-    if savefig: 
-        initial_dep_dt = dep_times_dt[0]
-        dep_range_dt = dep_times_dt[-1] - dep_times_dt[0]
-        syn_dt = synodic_period(body1_name, body2_name)
-        N_syn = round(dep_range_dt.total_seconds()/syn_dt.total_seconds())
-        img_name = return_porkchop_name(body1_name, body2_name, N, N_syn, initial_dep_dt)      
-        filepath = os.path.join(OUTPUT_ROOT, f"{img_name}.png")
-        plt.savefig(filepath, dpi=300)
-        print(f"Succesfully saved porkchop plot to {filepath}")
+    save_plot(savepath, dep_times_dt, body1_name, body2_name)
     
     if plot:   
         print("Displaying porkchop plot")
@@ -222,7 +227,7 @@ def porkchop_plotter(dep_times_jd:NDArray, arr_times_jd:NDArray, delta_v_values:
     plt.close()
   
 
-def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth", N:int=400, N_syn:int=1, savefig:bool=False, plot:bool=False) -> None:
+def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth", N:int=400, N_syn:int=1, savepath:Path=Path.cwd(), plot:bool=False) -> None:
     """Saves and creates a porkchop plot for travel between any two planets
 
     Args:
@@ -231,7 +236,7 @@ def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth
         body1_name (str, optional): Name of the body being departed from. Defaults to "earth".
         N (int, optional): Number of dates on each axis. Defaults to 400.
         N (int, optional): Number of dates on each axis. Defaults to 400.
-        savefig (bool, optional): If true, will save the porkchop plot as an image
+        savepath (Path.cwd(), optional): Folder within which the plot is saved
         plot (bool, optional): If true, will display the porkchop plot in a pop-up window
     """
     n_check = int(N/10)
@@ -280,5 +285,5 @@ def porkchop(initial_dep_time:dt.datetime, body2_name:str, body1_name:str="earth
     
     print_dv_min(delta_v_values, dep_times_jd, arr_times_jd)
 
-    porkchop_plotter(dep_times_jd, arr_times_jd, delta_v_values, body1_name, body2_name, savefig=savefig, plot=plot)
+    porkchop_plotter(dep_times_jd, arr_times_jd, delta_v_values, body1_name, body2_name, savepath=savepath, plot=plot)
     

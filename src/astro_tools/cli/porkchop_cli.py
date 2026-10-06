@@ -1,4 +1,4 @@
-from astro_tools.astrodynamics.porkchop_plot import porkchop
+from src.astro_tools.astrodynamics.porkchop_plot import porkchop
 import argparse
 import datetime as dt
 from pathlib import Path
@@ -35,14 +35,14 @@ def main() -> None:
     parser.add_argument("--origin", type=str, default="earth", help="The origin planet")
     parser.add_argument("--N", type=int, default=500, help="The number of departure and arrival dates. Determines the number of points")
     parser.add_argument("--N-syn", type=int, default=1, help="The number of synodic periods to make the plot over")
-    parser.add_argument("--save-fig", action="store_true", help="Whether or not to save an image of the plot in the outputs folder")
+    parser.add_argument("--save-fig", type=Path, default=Path.cwd(), help="Whether or not to save an image of the plot, and if so where")
     parser.add_argument("--plot", action="store_true", help="Whether or not to immediately display the plot as a popup")
 
-    a = parser.parse_args()
+    args = parser.parse_args()
     
-    initial_dep_time = format_time(a.init_time)
+    initial_dep_time = format_time(args.init_time)
     
-    porkchop(initial_dep_time, a.target, body1_name=a.origin, N=a.N, N_syn=a.N_syn, savefig=a.save_fig, plot=a.plot)
+    porkchop(initial_dep_time, args.target, body1_name=args.origin, N=args.N, N_syn=args.N_syn, savepath=args.save_fig, plot=args.plot)
 
 if __name__ == "__main__":
     main()

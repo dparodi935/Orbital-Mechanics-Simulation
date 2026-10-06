@@ -5,14 +5,14 @@ import numpy as np
 from scipy.optimize import newton
 from astroquery.jplhorizons import Horizons
 from jplephem.spk import SPK
-import astro_tools.core.astro_time as astro_time
-import astro_tools.core.basic as basic
-from astro_tools.data import constants
+import src.astro_tools.core.astro_time as astro_time
+import src.astro_tools.core.basic as basic
+from src.astro_tools.data import constants
 from importlib.resources import files
 
-EPHEM_CSV_FPATH = files("astro_tools.data.planetary_orbital_elements")
-SPICE_FPATH = files("astro_tools.data.spice_data")
-ID_CSV_FPATH = files("astro_tools.data").joinpath('horizon_ids.csv')
+EPHEM_CSV_FPATH = files("src.astro_tools.data.planetary_orbital_elements")
+SPICE_FPATH = files("src.astro_tools.data.spice_data")
+ID_CSV_FPATH = files("src.astro_tools.data").joinpath('horizon_ids.csv')
 
 
 def read_table(table_choice: str) -> pd.DataFrame:
