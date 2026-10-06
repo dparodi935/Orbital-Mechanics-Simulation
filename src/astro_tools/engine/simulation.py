@@ -1,24 +1,23 @@
-import sys, os
-script_dir = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(script_dir, ".."))
+from . import bodies, calculations, display
+from astro_tools.data import constants
+import astro_tools.utils.utility as utility 
+from . import lagrangepoints as lagrange
 
-from data import constants
-from . import calculations, display, bodies
-import utils.utility as utility 
 import numpy as np
 from numpy.typing import NDArray
 from typing import Any
 from time import perf_counter
-from . import lagrangepoints as lagrange
 import os 
+from importlib.resources import files
+
+CONFIG_FPATH = files("astro_tools.engine").joinpath('constants.yaml')
+
 
 class sim():
     
     def __init__(self) -> None:
         print("Configuring Simulation")
-        self.folder_path = os.path.dirname(os.path.abspath(__file__))
-
-        self.params = self.open_config_file('config')
+        self.params = self.open_config_file()
         self.frame = None
         self.master_bodies_list = self.create_master_bodies_list()
         self.SOIs = self.create_SOI_radii()
@@ -58,8 +57,8 @@ class sim():
 
     ''' SIMULATION INITIALISATION
     '''
-    def open_config_file(self, name:str) -> Any:
-        yaml_file = utility.open_yaml_file(self.folder_path, name)
+    def open_config_file(self) -> Any:
+        yaml_file = utility.open_yaml_file(CONFIG_FPATH)
         return yaml_file
     
     

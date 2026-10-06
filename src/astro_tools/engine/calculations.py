@@ -1,7 +1,3 @@
-import sys, os
-script_dir = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(script_dir, ".."))
-
 from astro_tools.data import constants
 import numpy as np
 from numpy.typing import NDArray

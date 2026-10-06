@@ -235,7 +235,6 @@ def state_from_horizons(target:str, jd_array:float) -> NDArray:
 
 
 def retrieve_SPK_kernel(spk_name:str) -> SPK:
-    #knl_fpath = os.path.join(SPICE_FPATH, f"{spk_name}.bsp")
     knl_fpath = SPICE_FPATH.joinpath(f"{spk_name}.bsp")
     kernel = SPK.open(knl_fpath)
     return kernel
