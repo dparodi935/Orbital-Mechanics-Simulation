@@ -1,13 +1,13 @@
-from . import bodies, calculations, display
+from . import bodies, display
+import astro_tools.numerical.RKF as numerical 
 from astro_tools.data import constants
 import astro_tools.utils.utility as utility 
-from . import lagrangepoints as lagrange
+from astro_tools.astrodynamics import lagrangepoints as lagrange
 
 import numpy as np
 from numpy.typing import NDArray
 from typing import Any
 from time import perf_counter
-import os 
 from importlib.resources import files
 
 CONFIG_FPATH = files("astro_tools.engine").joinpath('config.yaml')
@@ -124,6 +124,16 @@ class sim():
         
     
     def calculate_lagrange_point(self, coord_origin_entries:list[str], frame_bodies_list:list[bodies.Body]) -> tuple[NDArray]:
+        """_summary_
+
+        Args:
+            coord_origin_entries (list[str]): _description_
+            frame_bodies_list (list[bodies.Body]): _description_
+
+        Returns:
+            tuple[NDArray]: _description_
+        """
+        
         if len(coord_origin_entries) == 2:
             if len(frame_bodies_list) == 1:
                 print("ERROR: Lagrange points require two bodies in the frame")
@@ -133,7 +143,7 @@ class sim():
             if entry_two.lower()  in ['l1','l2','l3','l4','l5']:
                 body1 = frame_bodies_list[0]
                 body2 = frame_bodies_list[1]
-                lagrange_point_coords = lagrange.return_L_points(body1,body2)
+                lagrange_point_coords = lagrange.return_L_points(body1, body2)
                 
                 l_correction = lagrange_point_coords[int(entry_two[1])-1]
                 
@@ -397,6 +407,12 @@ class sim():
                     body.soi = other_body 
     
     
+    def initialise(self, master_bodies_list) -> None:
+        numerical.initialise(master_bodies_list)
+    
+    def time_step(self, beta, vel_error_tol, pos_error_tol, dt, master_bodies_list) -> float:
+        dt = numerical.time_step(beta, vel_error_tol, pos_error_tol, dt, master_bodies_list)
+        return dt
     
     ''' MAIN LOOP
     '''
@@ -409,7 +425,7 @@ class sim():
         incomplete_maneuvers_list, incomplete_maneuver_times = self.maneuvers_list, self.maneuver_times
         duration_seconds = float(duration)*24*60*60
         time = 0
-        calculations.initialise(self.master_bodies_list)
+        self.initialise(self.master_bodies_list)
 
         print("Simulation Loop Starting")
         start = perf_counter()
@@ -424,7 +440,7 @@ class sim():
                         del incomplete_maneuver_times[0]
             
             #do calculations
-            dt = calculations.time_step(beta, vel_error_tol, pos_error_tol, dt, self.master_bodies_list)
+            dt = self.time_step(beta, vel_error_tol, pos_error_tol, dt, self.master_bodies_list)
             #print(f"dt={dt}\n")
             self.update_bodies()
             #determine SOI every object is in

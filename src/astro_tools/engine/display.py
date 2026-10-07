@@ -12,7 +12,6 @@ from numpy.typing import NDArray
 
 from functools import partial
 
-from . import calculations
 from astro_tools.core import basic
 from astro_tools.data import constants
 from . import bodies

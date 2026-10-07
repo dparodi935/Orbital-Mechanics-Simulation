@@ -1,28 +1,6 @@
-from astro_tools.data import constants
 import numpy as np
-from numpy.typing import NDArray
-from . import bodies
-
-def gravity(rel_pos_vector:NDArray, mass:float) -> NDArray:
-    ''' 
-    Calculate acceleration due to gravity between two bodies
-    '''
-    distance = np.linalg.norm(rel_pos_vector)
-    A = constants.G*mass
-    return rel_pos_vector * ((A)/(distance**3))
-
-
-def get_net_acceleration(main_body:bodies.Body, bodies_list:list[bodies.Body]) -> NDArray:
-    ''' Calculates net gravitational acceleration on main_body
-    '''
-    net_acc = np.array([0,0,0],dtype=float)
-    for other_body in bodies_list:
-        if other_body != main_body and other_body.mass > 1e+10:
-            rel_pos_vector = other_body.temp_position - main_body.temp_position
-            net_acc += gravity(rel_pos_vector, other_body.mass)
-    
-    return net_acc
- 
+import astro_tools.engine.bodies as bodies
+import astro_tools.forces.forces as forces
 
 def initialise(master_bodies_list:list[bodies.Body]) -> None:
     #add check for integrator being used. for now just assume RFK
@@ -57,7 +35,7 @@ def time_step(beta:float, vel_error_tol:float, pos_error_tol:float, dt:float, ma
             
         for body in master_bodies_list:
             
-            body.ka_values[i] = get_net_acceleration(body, master_bodies_list)
+            body.ka_values[i] = forces.get_net_acceleration(body, master_bodies_list)
             body.temp_velocity = np.copy(body.velocity)
             for u in range(6):
                 body.temp_velocity += dt * b[i][u] * body.ka_values[u]

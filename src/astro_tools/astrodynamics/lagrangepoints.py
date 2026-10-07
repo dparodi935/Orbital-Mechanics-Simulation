@@ -1,11 +1,21 @@
 import numpy as np
 from scipy.optimize import brentq
-from . import bodies
+from astro_tools.engine import bodies
 from numpy.typing import NDArray
 
 def return_L_points(body1:bodies.Body, body2:bodies.Body) -> list[NDArray]:
-    ''' Returns x-y coordinates of the Lagrange points of a two-body system, centred on the larger mass body1
-    '''
+    """Calculates the coordinates of the Lagrange points relative to the orbital plane, centred on body1
+
+    Args:
+        body1 (bodies.Body): The origin body
+        body2 (bodies.Body): The secondary body
+
+    Raises:
+        ValueError: _description_
+
+    Returns:
+        list[NDArray]: List of coordinates of lagrange points 1-5 (m)
+    """
     
     m1 = body1.mass
     m2 = body2.mass
