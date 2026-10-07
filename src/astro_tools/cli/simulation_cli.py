@@ -1,44 +1,41 @@
 import astro_tools.engine.simulation as simulation
-import argparse
-import datetime as dt
-from pathlib import Path
+from astro_tools.cli.cli_tools import format_time
+import subprocess, argparse
+from importlib.resources import files
 
-def format_time(time_str: str) -> dt.datetime:
-    split_str = time_str.split("/")
-    day_str = split_str[0]
-    month_str = split_str[1]
-    year = int(split_str[2])
+SIM_CONFIG_FPATH = files("astro_tools.engine").joinpath('config.yaml')
+
+
+def select_editor(args):
+    editor = "vim"
+
+    if args.notepad: editor = "notepad"
+    elif args.vim: editor = "vim"
+    elif args.gvim: editor = "gvim"
+    elif args.nano: editor = "nano"
     
-    # validation
-    if len(day_str) != 2: 
-        raise ValueError("Day must be in format 'XX'")
-    if len(month_str) != 2: 
-            raise ValueError("Day must be in format 'XX'")
-    
-    day = int(day_str)
-    month = int(month_str)
-    
-    if day < 1 or day > 31:
-        raise ValueError("Enter valid value for the day")
-    if month < 1  or month > 12:
-        raise ValueError("Enter valid value for the month")
-    
-    initial_dep_time = dt.datetime(year, month, day)
-    
-    return initial_dep_time
+    if sum([args.notepad, args.vim, args.gvim, args.nano]) > 1:
+        print("Select only one editor")
+        
+    return editor
 
 
 def main() -> None:
-    #parser = argparse.ArgumentParser()
-    #parser.add_argument("--save-fig", type=Path, default=Path.cwd(), help="Whether or not to save an image of the plot, and if so where")
-    #parser.add_argument("--plot", action="store_true", help="Whether or not to immediately display the plot as a popup")
-
-    #args = parser.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--notepad", action="store_true", help="Edit config using notepad")
+    parser.add_argument("--vim", action="store_true", help="Edit config using vim")
+    parser.add_argument("--gvim", action="store_true", help="Edit config using gvim")
+    parser.add_argument("--nano", action="store_true", help="Edit config using nano")
     
-    #initial_dep_time = format_time(args.init_time)
+    args = parser.parse_args()
+    
+    editor = select_editor(args)
+    
+    subprocess.run([editor, str(SIM_CONFIG_FPATH)], check=True)
     
     sim = simulation.sim()
     sim.run() 
+    
     
 if __name__ == "__main__":
     main()
