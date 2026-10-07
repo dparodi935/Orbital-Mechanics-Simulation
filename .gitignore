@@ -7,4 +7,4 @@ __pycache__/
 
 .vscode/
 astrodynamics_obsidian/
-*.png
+src/*.png
