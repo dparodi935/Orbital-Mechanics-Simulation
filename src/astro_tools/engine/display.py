@@ -13,6 +13,7 @@ from numpy.typing import NDArray
 from functools import partial
 
 from . import calculations
+from astro_tools.core import basic
 from astro_tools.data import constants
 from . import bodies
 
@@ -27,15 +28,10 @@ def positions_from_orbital_parameters(orbital_data:dict[str:float], soi_position
         #in case body isnt orbiting anything
         return np.array([[0,0,0]]) 
     
+    #calculate 2d values
     e = np.linalg.norm(e_vector)
-    
-    theta_begin = 0
-    theta_end = 2*np.pi
- 
-    x_projection = e_vector/e
-    y_projection = np.cross(normal, x_projection)/(np.linalg.norm(np.cross(normal, x_projection)))
 
-    theta_values = np.linspace(theta_begin, theta_end, 10000)
+    theta_values = np.linspace(0, 2*np.pi, 10000)
     true_anomaly_values = theta_values - theta_correction
     
     r_values = r0/(1 + e * np.cos(true_anomaly_values))
@@ -44,7 +40,11 @@ def positions_from_orbital_parameters(orbital_data:dict[str:float], soi_position
     
     x_values = r_values[filtered_indices] * np.cos(true_anomaly_values[filtered_indices])
     y_values = r_values[filtered_indices] * np.sin(true_anomaly_values[filtered_indices])
-        
+    
+    #transform to 3D
+    x_projection = e_vector/e
+    y_projection = np.cross(normal, x_projection)/(np.linalg.norm(np.cross(normal, x_projection)))
+    
     position_values = soi_position + np.outer(np.array(y_values), y_projection) + np.outer(np.array(x_values), x_projection)
     
     return position_values
@@ -60,15 +60,14 @@ def display_time(time:float) -> str:
    return f"Time = {time/3600:.{decimal}f} hrs"    
 
 
-def return_display_text(body:bodies.Body, orbital_data:dict[str:float], rel_body_velocity:NDArray, soi:bodies.Body) -> str:
+def return_display_text(body:bodies.Body, h:float, mu:float, e:float, rel_body_velocity:NDArray, soi:bodies.Body) -> str:
     satellite_name = body.name
     colour = body.colour.capitalize()
     speed = np.linalg.norm(rel_body_velocity)
     soi_name = soi.name
     
     soi_radius = soi.radius
-    r0, e_vector = orbital_data['r0'], orbital_data['e_vector']
-    e = np.linalg.norm(e_vector)
+    r0 = (h**2)/mu
     peri = r0/(1+e) - soi_radius
     apo = max(r0/(1-e) - soi_radius,-soi_radius)
     
@@ -233,6 +232,32 @@ def update_timer(timer, animation_time_data, frame):
     timer.set_text(time)
 
 
+"""def positions_from_state(h, inc, raan, e, argp, ta, soi_position:NDArray) -> NDArray:
+    ''' Takes in parameters of an orbit and returns position values to plot it
+    '''
+    if not r0:
+        #in case body isnt orbiting anything
+        return np.array([[0,0,0]]) 
+    
+    #calculate 2d values
+
+    theta_values = np.linspace(0, 2*np.pi, 10000)
+    true_anomaly_values = theta_values - theta_correction
+    
+    r_values = r0/(1 + e * np.cos(true_anomaly_values))
+    
+    filtered_indices = [i for i in range(len(r_values)) if r_values[i] > 0]
+    
+    x_values = r_values[filtered_indices] * np.cos(true_anomaly_values[filtered_indices])
+    y_values = r_values[filtered_indices] * np.sin(true_anomaly_values[filtered_indices])
+    
+    #transform to 3D
+    position_values = 
+    
+    return position_values"""
+
+
+
 def draw_lines_and_display(i, frame, sim_data, display_counter, dim:int=3):
     if dim == 2:
         characters, lines, text_displays, pos_data, vel_data, soi_data, bodies_list, timer, animation_time_data = retrieve_sim_data(sim_data, dim=2)
@@ -256,13 +281,17 @@ def draw_lines_and_display(i, frame, sim_data, display_counter, dim:int=3):
     body_position = pos_data[i][frame]
     body_velocity = vel_data[i][frame]
     
-    r0, e_vector, normal, theta_correction = calculations.determine_orbit_from_state(soi_mass, soi_position, soi_velocity, body_position, body_velocity)
-    orbital_data = {'r0':r0, 'e_vector':e_vector, 'normal':normal, 'theta_correction':theta_correction}
-
-    orbital_trajectory = positions_from_orbital_parameters(orbital_data, soi_position) 
-        
-    lines[i].set_data(*orbital_trajectory[:,:2].T)  
-    if dim==3: lines[i].set_3d_properties(orbital_trajectory[:,2].T)  
+    rel_position = body_position - soi_position
+    rel_velocity = body_velocity - soi_velocity
+    
+    mu = constants.G * soi_mass
+    
+    h, inc, raan, e, argp, ta = basic.elements_from_state(mu, rel_position, rel_velocity)
+    orbital_shape = (h, inc, raan, e, argp)
+    position_values = basic.orbit_from_elements(mu, orbital_shape) 
+    
+    lines[i].set_data(*position_values[:,:2].T)  
+    if dim==3: lines[i].set_3d_properties(position_values[:,2].T)  
                 
     #Update satellite's display 
     MAX_DISPLAY_NUM = 3
@@ -271,9 +300,8 @@ def draw_lines_and_display(i, frame, sim_data, display_counter, dim:int=3):
         return
     
     if body.mass < 1e+10 and display_counter <= MAX_DISPLAY_NUM:
-        display = text_displays[display_counter]
-        rel_body_velocity = body_velocity - soi_velocity
-        updated_display_text = return_display_text(body, orbital_data, rel_body_velocity, soi)
+        display = text_displays[display_counter]        
+        updated_display_text = return_display_text(body, h, mu, e, rel_velocity, soi)
         display.set_text(updated_display_text)
         display_counter += 1
 

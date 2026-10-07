@@ -92,35 +92,3 @@ def time_step(beta:float, vel_error_tol:float, pos_error_tol:float, dt:float, ma
     #dt = max(min(dt, MAX_dt_LIM), MIN_dt_LIM) #1000), 0.
     
     return dt
-
-
-def determine_orbit_from_state(soi_mass:float, soi_position:NDArray, soi_velocity:NDArray, body_position:NDArray, body_velocity:NDArray) -> tuple[float]:
-    ''' Takes in state vector of body + info about what it's orbiting and calculates the parameters of the orbit
-    '''
-    G = constants.G
-    M = soi_mass
-
-    #relative position, velocity
-    position = body_position - soi_position
-    velocity = body_velocity - soi_velocity
-    
-    mu = G * M
-    
-    r = np.linalg.norm(position)
-    
-    v_r = np.dot(velocity,position)/r
-    
-    h_vector = np.cross(position,velocity)
-    h = np.linalg.norm(h_vector)
-    e_vector = np.cross(velocity,h_vector)/mu - position/r
-    
-    true_anomaly = np.arctan2((v_r*h/mu), ((h**2)/(mu*r) - 1))
-    theta_actual = np.arctan2(position[1],position[0])
-    theta_correction = theta_actual - true_anomaly
-    
-    r0 = (h**2)/mu
-    
-    normal = h_vector/h
-
-    return r0, e_vector, normal, theta_correction
-

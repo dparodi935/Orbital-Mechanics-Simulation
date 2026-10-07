@@ -1,9 +1,9 @@
 # config.yaml
 
 SIMULATION_PARAMS:
-    duration: 1 #days
+    duration: 4 #days
     initial_dt: 1
-    debug_mode: true # true or false
+    debug_mode: false # true or false
  
 CALCULATION_PARAMS:
     beta: 0.8 #0.8 or 0.9
@@ -13,7 +13,7 @@ CALCULATION_PARAMS:
 #set either save_animation OR live_display to "True" to generate animation. Currently the specific setting only affects 2D
 ANIMATION_PARAMS:
   mode: interactive #'saved' or 'interactive' or 'none'
-  dimensions: 2D #2D, 3D
+  dimensions: 3D #2D, 3D
   dpi: 200  
   framerate: 35
   save_folder: "C:/Users/dp271/Downloads"
