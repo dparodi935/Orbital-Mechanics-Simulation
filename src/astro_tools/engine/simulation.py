@@ -30,7 +30,7 @@ class sim():
         self.time_values = [0]
         
         
-    def return_direction_vectors(self, subject:bodies.Body, soi:bodies.Body, coord_system:str='vnc') -> None:
+    def return_direction_vectors(self, subject:bodies.Body, soi:bodies.Body, coord_system:str='vnc') -> tuple[NDArray, NDArray, NDArray]:
         ''' Returns the velocity, normal and cross-track vectors of an orbiting body (subject)
             VNC Frame (for now)
         '''
@@ -246,9 +246,15 @@ class sim():
                 
                 velocity_dir_vector, cross_track_vector, normal_vector = self.return_direction_vectors(body, soi, coord_system='cylindrical')
                 
-                velocity = velocity_dir_vector * tangential_speed 
-                + cross_track_vector * radial_speed
-                + normal_vector * z_speed
+                velocity = velocity_dir_vector * tangential_speed + cross_track_vector * radial_speed + normal_vector * z_speed
+                """if body_input['name'].lower() == "standard":                        
+                    print(velocity_dir_vector)
+                    print(cross_track_vector)
+                    print(normal_vector)
+                    print("\n velocity")
+                    print(velocity)
+                    print("\n normal_vector * z_speed")
+                    print(normal_vector * z_speed)"""
                 
             else:
                 print(f"ERROR: Invalid input for 'vel_input_mode' for the body {body_input.name}")
@@ -320,9 +326,11 @@ class sim():
             return
         
         if dimensions == "2D":
-            display.create_2D_animation(self.master_bodies_list, self.time_values, self.frame, animation_params)
+            #display.create_2D_animation(self.master_bodies_list, self.time_values, self.frame, animation_params)
+            display.create_animation(self.master_bodies_list, self.time_values, self.frame, animation_params, dim=2)
         elif dimensions == "3D":
-            display.create_3D_matp_animation(self.master_bodies_list, self.time_values, self.frame, animation_params)
+            #display.create_3D_matp_animation(self.master_bodies_list, self.time_values, self.frame, animation_params)
+            display.create_animation(self.master_bodies_list, self.time_values, self.frame, animation_params, dim=3)
         else:
             print("ERROR: Invalid value entered for dimensions. Animation not created")
         
@@ -406,6 +414,7 @@ class sim():
         print("Simulation Loop Starting")
         start = perf_counter()
         while time < duration_seconds: 
+            #print(time)
             #Check for and then execute maneuvers
             if len(incomplete_maneuver_times) > 0:
                 for i in range(len(incomplete_maneuver_times)):
@@ -416,7 +425,7 @@ class sim():
             
             #do calculations
             dt = calculations.time_step(beta, vel_error_tol, pos_error_tol, dt, self.master_bodies_list)
-            
+            #print(f"dt={dt}\n")
             self.update_bodies()
             #determine SOI every object is in
             self.determine_SOIs()

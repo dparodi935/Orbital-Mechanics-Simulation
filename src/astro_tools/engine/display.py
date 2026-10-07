@@ -208,14 +208,12 @@ def append_interpolated_body_data(body:bodies.Body,
                                   vel_data:list[NDArray], 
                                   soi_data:list[list[bodies.Body]], 
                                   simulation_time_data:list[float], 
-                                  animation_time_data:NDArray) -> tuple[list[NDArray], list[NDArray], list[list[bodies.Body]]]:
+                                  animation_time_data:NDArray) -> None:
     interpolated_position_history, interpolated_velocity_history, interpolated_soi_history = body.interpolate_history(simulation_time_data, animation_time_data)
     
     pos_data.append(interpolated_position_history)
     vel_data.append(interpolated_velocity_history)
     soi_data.append(interpolated_soi_history)
-    
-    return pos_data, soi_data, vel_data
 
 
 def return_soi(soi_data:list[list[bodies.Body]], frame:int, i:int) -> bodies.Body:
@@ -228,6 +226,74 @@ def return_soi(soi_data:list[list[bodies.Body]], frame:int, i:int) -> bodies.Bod
         soi = soi_data[i][0]    
         
     return soi
+
+
+def update_timer(timer, animation_time_data, frame):
+    time = display_time(animation_time_data[frame])
+    timer.set_text(time)
+
+
+def draw_lines_and_display(i, frame, sim_data, display_counter, dim:int=3):
+    if dim == 2:
+        characters, lines, text_displays, pos_data, vel_data, soi_data, bodies_list, timer, animation_time_data = retrieve_sim_data(sim_data, dim=2)
+    elif dim == 3:
+        characters, lines, text_displays, pos_data, vel_data, soi_data, bodies_list, timer, animation_time_data, proj_lines = retrieve_sim_data(sim_data, dim=3)
+
+    body = bodies_list[i]
+    
+    #find the sphere of influence
+    soi = return_soi(soi_data, frame, i)
+
+    if not soi:
+        return
+            
+    soi_index = bodies_list.index(soi)
+    
+    #get data of the body in question and what it's orbiting (whose soi it is in)
+    soi_mass = soi.mass
+    soi_position = pos_data[soi_index][frame]
+    soi_velocity = vel_data[soi_index][frame]
+    body_position = pos_data[i][frame]
+    body_velocity = vel_data[i][frame]
+    
+    r0, e_vector, normal, theta_correction = calculations.determine_orbit_from_state(soi_mass, soi_position, soi_velocity, body_position, body_velocity)
+    orbital_data = {'r0':r0, 'e_vector':e_vector, 'normal':normal, 'theta_correction':theta_correction}
+
+    orbital_trajectory = positions_from_orbital_parameters(orbital_data, soi_position) 
+        
+    lines[i].set_data(*orbital_trajectory[:,:2].T)  
+    if dim==3: lines[i].set_3d_properties(orbital_trajectory[:,2].T)  
+                
+    #Update satellite's display 
+    MAX_DISPLAY_NUM = 3
+    
+    if display_counter > MAX_DISPLAY_NUM:
+        return
+    
+    if body.mass < 1e+10 and display_counter <= MAX_DISPLAY_NUM:
+        display = text_displays[display_counter]
+        rel_body_velocity = body_velocity - soi_velocity
+        updated_display_text = return_display_text(body, orbital_data, rel_body_velocity, soi)
+        display.set_text(updated_display_text)
+        display_counter += 1
+
+
+def retrieve_sim_data(sim_data:dict, dim:int=3):
+    characters = sim_data["characters"]
+    lines = sim_data["lines"]
+    text_displays = sim_data["text_displays"]
+    pos_data = sim_data["pos_data"]
+    vel_data = sim_data["vel_data"]
+    soi_data = sim_data["soi_data"]
+    bodies_list = sim_data["bodies_list"]
+    timer = sim_data["timer"]
+    animation_time_data = sim_data["animation_time_data"]
+    
+    if dim == 2:
+        return characters, lines, text_displays, pos_data, vel_data, soi_data, bodies_list, timer, animation_time_data
+    elif dim == 3:
+        proj_lines = sim_data["proj_lines"]
+        return characters, lines, text_displays, pos_data, vel_data, soi_data, bodies_list, timer, animation_time_data, proj_lines
 
 
 def output_animation(animation:FuncAnimation, animation_params:dict, fig:Figure) -> None:
@@ -249,6 +315,32 @@ def output_animation(animation:FuncAnimation, animation_params:dict, fig:Figure)
         
         plt.show(block=True)
         
+        
+def create_animation(master_bodies_list:list[bodies.Body], simulation_time_data:list[float], reference_frame:str, animation_params:dict, dim:int=3) -> None:
+    framerate = animation_params["framerate"]
+    
+    if dim == 2:
+        init_func = init_2D
+        update_func = update_frame_2D
+    elif dim == 3:
+        init_func = init_3D
+        update_func = update_frame_3D
+    else:
+        raise Exception
+    
+    fig, num_frames, sim_data = init_func(master_bodies_list, simulation_time_data, reference_frame)
+    
+    animation = FuncAnimation(
+                    func=partial(update_func, sim_data=sim_data),
+                    fig=fig,
+                    frames=num_frames,
+                    blit=False, 
+                    repeat=True,
+                    interval=1000/framerate
+                )
+    
+    output_animation(animation, animation_params, fig) 
+
         
 #%% 2D Matplotlib Animation
 
@@ -278,7 +370,7 @@ def init_2D(master_bodies_list:list[bodies.Body], simulation_time_data:list[floa
     text_displays = configure_text_displays(fig, master_bodies_list)
         
     #Configure body sprites and trjacetory lines
-    for i, body in enumerate(master_bodies_list):
+    for body in master_bodies_list:
         colour = return_body_colour(body)
         
         if body.preset:
@@ -297,7 +389,7 @@ def init_2D(master_bodies_list:list[bodies.Body], simulation_time_data:list[floa
         lines.append(ax.plot([],[], colour, lw=1.5, zorder = 0)[0])
         
         #interpolate body's data
-        pos_data, soi_data, vel_data = append_interpolated_body_data(body, pos_data, vel_data, soi_data, simulation_time_data, animation_time_data)
+        append_interpolated_body_data(body, pos_data, vel_data, soi_data, simulation_time_data, animation_time_data)
     
     sim_data = {
         "characters": characters,
@@ -314,84 +406,29 @@ def init_2D(master_bodies_list:list[bodies.Body], simulation_time_data:list[floa
     return fig, num_frames, sim_data
     
 
-def create_2D_animation(master_bodies_list:list[bodies.Body], simulation_time_data:list[float], reference_frame:str, animation_params:dict) -> None:
-    framerate = animation_params["framerate"]
-    fig, num_frames, sim_data = init_2D(master_bodies_list, simulation_time_data, reference_frame)
-    
-    animation = FuncAnimation(
-                    func=partial(update_frame_2D, sim_data=sim_data),
-                    fig=fig,
-                    frames=range(1,num_frames),
-                    blit=False,
-                    repeat=True,
-                    interval=1000/framerate
-                )
-    
-    output_animation(animation, animation_params, fig) 
-
-
 def update_frame_2D(frame:int, sim_data:dict=None) -> list:
-    characters, lines, text_displays, pos_data, vel_data, soi_data, bodies_list, timer, animation_time_data = (
-        sim_data["characters"],
-        sim_data["lines"],
-        sim_data["text_displays"],
-        sim_data["pos_data"],
-        sim_data["vel_data"],
-        sim_data["soi_data"],
-        sim_data["bodies_list"],
-        sim_data["timer"],
-        sim_data["animation_time_data"]
-    )
+    characters, lines, text_displays, pos_data, vel_data, soi_data, bodies_list, timer, animation_time_data = retrieve_sim_data(sim_data, dim=2)
     
-    #change time on timer
-    time = display_time(animation_time_data[frame])
-    timer.set_text(time)
+    # change time on timer
+    update_timer(timer, animation_time_data, frame)
     
     display_counter = 0
     
-    for i in range(len(characters)): 
-        body = bodies_list[i]
+    for i in range(len(characters)):       
         #draw body
+        body = bodies_list[i]
+        
         if body.preset:
             characters[i].set_center(pos_data[i][frame])
         else:
             x_values = pos_data[i][frame][0]
             y_values = pos_data[i][frame][1]
             characters[i].set_data([x_values], [y_values])
-            
-        #find the sphere of influence
-        soi = return_soi(soi_data, frame, i)
-        if not soi:
-            continue
+   
             
         #Calculate and plot the trajectory
         if frame > 0: 
-            soi_index = bodies_list.index(soi)
-            
-            #get data of the body in question and what it's orbiting (whose soi it is in)
-            soi_mass = soi.mass
-            soi_position = pos_data[soi_index][frame]
-            soi_velocity = vel_data[soi_index][frame]
-            body_position = pos_data[i][frame]
-            body_velocity = vel_data[i][frame]
-            
-            r0, e_vector, normal, theta_correction = calculations.determine_orbit_from_state(soi_mass, soi_position, soi_velocity, body_position, body_velocity)
-            orbital_data = {'r0':r0, 'e_vector':e_vector, 'normal':normal, 'theta_correction':theta_correction}
-
-            orbital_trajectory = positions_from_orbital_parameters(orbital_data, soi_position) 
-                
-            lines[i].set_data(*orbital_trajectory[:,:2].T)  
-        
-            #Update satellite's display 
-            if display_counter >= 4:
-                continue
-            
-            if body.mass < 1e+10:
-                display = text_displays[display_counter]
-                body_soi_speed = body_velocity - soi_velocity
-                updated_display_text = return_display_text(body, orbital_data, body_soi_speed, soi)
-                display.set_text(updated_display_text)
-                display_counter += 1
+            draw_lines_and_display(i, frame, sim_data, display_counter, dim=2)
    
     return characters + lines + [timer] + text_displays
 
@@ -416,14 +453,14 @@ def init_3D(master_bodies_list:list[bodies.Body], simulation_time_data:list[floa
 
     #collect interpolated data and set up the artists for the animation
     characters = []
+    proj_lines = []
     lines = []
-    trajectory_lines = []
     pos_data = []
     vel_data = []
     soi_data = []
     text_displays = configure_text_displays(fig, master_bodies_list)
     
-    for i, body in enumerate(master_bodies_list):
+    for body in master_bodies_list:
         if body.name.lower() == "earth" and reference_frame == "Earth":
             continue
         
@@ -433,16 +470,16 @@ def init_3D(master_bodies_list:list[bodies.Body], simulation_time_data:list[floa
         
         #setup objects for the body and its corresponding projection + trajectory lines
         characters.append(ax.plot([],[],[], style, markersize=markersize, zorder=10)[0])
+        proj_lines.append(ax.plot([],[],[], colour, lw=1, zorder=9)[0])
         lines.append(ax.plot([],[],[], colour, lw=1, zorder=9)[0])
-        trajectory_lines.append(ax.plot([],[],[], colour, lw=1, zorder=9)[0])
         
         #interpolate the body's data
         append_interpolated_body_data(body, pos_data, vel_data, soi_data, simulation_time_data, animation_time_data)
     
     sim_data = {
     "characters": characters,
+    "proj_lines": proj_lines,
     "lines": lines,
-    "trajectory_lines": trajectory_lines,
     "text_displays": text_displays,
     "pos_data": pos_data,
     "vel_data": vel_data,
@@ -473,27 +510,19 @@ def draw_3D_background(ax:Axes, reference_frame:str, display_half_width:float) -
     ax.grid(False)
 
 
-def update_matp_frame_3D(frame:int, sim_data:dict=None) -> list:
-    characters, lines, trajectory_lines, text_displays, pos_data, vel_data, soi_data, bodies_list, timer, animation_time_data = (
-        sim_data["characters"],
-        sim_data["lines"],
-        sim_data["trajectory_lines"],
-        sim_data["text_displays"],
-        sim_data["pos_data"],
-        sim_data["vel_data"],
-        sim_data["soi_data"],
-        sim_data["bodies_list"],
-        sim_data["timer"],
-        sim_data["animation_time_data"]
-    )
+
+
+def update_frame_3D(frame:int, sim_data:dict=None) -> list:
+    characters, lines, text_displays, pos_data, vel_data, soi_data, bodies_list, timer, animation_time_data, proj_lines = retrieve_sim_data(sim_data, dim=3)
+
+    # change time on timer
+    update_timer(timer, animation_time_data, frame)
     
-    #change time on timer
-    time = display_time(animation_time_data[frame])
-    timer.set_text(time)
+    display_counter = 0           
     
-    display_counter=0                
+    N_bodies = len(pos_data)
    
-    for i in range(len(pos_data)): 
+    for i in range(N_bodies):         
         #draw body
         x_value = pos_data[i][frame][0]
         y_value = pos_data[i][frame][1]
@@ -503,78 +532,30 @@ def update_matp_frame_3D(frame:int, sim_data:dict=None) -> list:
         
         #set render order of character
         if z_value < 0:
-            lines[i].set_zorder(0)
+            proj_lines[i].set_zorder(0)
             characters[i].set_zorder(0.5)
         elif z_value > 0:
-            lines[i].set_zorder(9)
+            proj_lines[i].set_zorder(9)
             characters[i].set_zorder(10) 
-        
-        #find the sphere of influence
-        soi = return_soi(soi_data, frame, i)
-
-        if not soi:
-            continue
         
         # Calculate and plot the trajectory            
         if frame > 0: 
-            soi_index = bodies_list.index(soi)
-            
-            #get data of the body in question and what it's orbiting (whose soi it is in)
-            soi_mass = soi.mass
-            soi_position = pos_data[soi_index][frame]
-            soi_velocity = vel_data[soi_index][frame]
-            body_position = pos_data[i][frame]
-            body_velocity = vel_data[i][frame]
-            
-            r0, e_vector, normal, theta_correction = calculations.determine_orbit_from_state(soi_mass, soi_position, soi_velocity, body_position, body_velocity)
-            orbital_data = {'r0':r0, 'e_vector':e_vector, 'normal':normal, 'theta_correction':theta_correction}
+            draw_lines_and_display(i, frame, sim_data, display_counter)
 
-            orbital_trajectory = positions_from_orbital_parameters(orbital_data, soi_position) 
-                
-            trajectory_lines[i].set_data(*orbital_trajectory[:,:2].T)  
-            trajectory_lines[i].set_3d_properties(orbital_trajectory[:,2].T)            
-            #Update satellite's display 
-            if display_counter >= 4:
-                continue
-            
-            body = bodies_list[i]
-            
-            if body.mass < 1e+10:
-                display = text_displays[display_counter]
-                rel_body_velocity = body_velocity - soi_velocity
-                updated_display_text = return_display_text(body, orbital_data, rel_body_velocity, soi)
-                display.set_text(updated_display_text)
-                display_counter += 1
-
-        
-        #draws projecction lines
-        lines[i].set_data([x_value,x_value], [y_value,y_value])
-        lines[i].set_3d_properties([z_value,0])
+        #draws projection lines
+        proj_lines[i].set_data([x_value,x_value], [y_value,y_value])
+        proj_lines[i].set_3d_properties([z_value,0])
         
         
-    return characters + lines + trajectory_lines + [timer]
+    return characters + proj_lines + lines + [timer]
 
 
-def create_3D_matp_animation(master_bodies_list:list[bodies.Body], simulation_time_data:list[float], reference_frame:str, animation_params:dict) -> None:
-    framerate = animation_params["framerate"]
-    fig, num_frames, sim_data = init_3D(master_bodies_list, simulation_time_data, reference_frame)
-    
-    animation = FuncAnimation(
-                    func=partial(update_matp_frame_3D, sim_data=sim_data),
-                    fig=fig,
-                    frames=num_frames,
-                    blit=False, 
-                    repeat=True,
-                    interval=1000/framerate
-                )
-    
-    output_animation(animation, animation_params, fig) 
 
 
 #%% Static 2D Plot
     
 def plot(master_bodies_list: list[bodies.Body]) -> None:
-    matplotlib.use('module://matplotlib_inline.backend_inline')
+    #matplotlib.use('module://matplotlib_inline.backend_inline')
     fig_2dplot, ax_2dplot = plt.subplots()
     for body in master_bodies_list:
         #ax_2dplot.scatter(np.array(body.position_history)[:,0], np.array(body.position_history)[:, 1],s=0.01)
