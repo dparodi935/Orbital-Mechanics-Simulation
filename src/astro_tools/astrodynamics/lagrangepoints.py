@@ -4,7 +4,7 @@ from astro_tools.engine import bodies
 from numpy.typing import NDArray
 
 def return_L_points(body1:bodies.Body, body2:bodies.Body) -> list[NDArray]:
-    """Calculates the coordinates of the Lagrange points relative to the orbital plane, centred on body1
+    """Calculates the coordinates of the Lagrange points relative to the orbital plane, centred on body1, with the x-axis joining the two bodies
 
     Args:
         body1 (bodies.Body): The origin body

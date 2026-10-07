@@ -134,34 +134,38 @@ class sim():
             tuple[NDArray]: _description_
         """
         
-        if len(coord_origin_entries) == 2:
-            if len(frame_bodies_list) == 1:
-                print("ERROR: Lagrange points require two bodies in the frame")
-                return np.zeros(3), np.zeros(3)
-            
-            entry_two = coord_origin_entries[1].replace(" ","")
-            if entry_two.lower()  in ['l1','l2','l3','l4','l5']:
-                body1 = frame_bodies_list[0]
-                body2 = frame_bodies_list[1]
-                lagrange_point_coords = lagrange.return_L_points(body1, body2)
-                
-                l_correction = lagrange_point_coords[int(entry_two[1])-1]
-                
-                a = np.linalg.norm(body2.position-body1.position)
-                omega = np.sqrt(constants.G * body1.mass/(a**3))
-                speed = omega * np.linalg.norm(l_correction)
-                
-                y_dir = np.cross([0,0,1],l_correction)
-                y_dir = y_dir/np.linalg.norm(y_dir)
-                vel_correction = y_dir * speed
-
-                return l_correction, vel_correction
-                
-            else:    
-                print("ERROR: Entry after 2nd comma for 'coord_origin' must be of form Lx, where x is 1-5")
-                return np.zeros(3), np.zeros(3)
-        else:
+        # if there are not two listed items, assume no Lagrange point is intended and return no correction
+        if len(coord_origin_entries) != 2:
             return np.zeros(3), np.zeros(3)
+        
+        # if a Lagrange point is intended, the simulation frame must have two bodies for those points to exist
+        if len(frame_bodies_list) == 1:
+            print("ERROR: Lagrange points require two bodies in the frame")
+            return np.zeros(3), np.zeros(3)
+        
+        entry_two = coord_origin_entries[1].replace(" ","")
+        
+        # check the format for the L point is correct
+        if entry_two.lower()  in ['l1','l2','l3','l4','l5']:
+            print("ERROR: Entry after 2nd comma for 'coord_origin' must be of form Lx, where x is 1-5 indicating the origin Lagrange point")
+            return np.zeros(3), np.zeros(3)
+        
+        
+        body1 = frame_bodies_list[0]
+        body2 = frame_bodies_list[1]
+        lagrange_point_coords = lagrange.return_L_points(body1, body2)
+        
+        l_correction = lagrange_point_coords[int(entry_two[1])-1]
+        
+        a = np.linalg.norm(body2.position-body1.position)
+        omega = np.sqrt(constants.G * body1.mass/(a**3))
+        speed = omega * np.linalg.norm(l_correction)
+        
+        y_dir = np.cross([0,0,1],l_correction)
+        y_dir = y_dir/np.linalg.norm(y_dir)
+        vel_correction = y_dir * speed
+
+        return l_correction, vel_correction
         
         
     def configure_body_position(self, body:dict, frame_bodies_list:list[bodies.Body]) -> tuple[NDArray, NDArray]:
