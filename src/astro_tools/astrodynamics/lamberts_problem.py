@@ -118,7 +118,7 @@ def lambert(mu:float, r_1:NDArray, r_2:NDArray, delta_t:float, direction:str="pr
     """Return the final and inital velocity of a trajectory given two positions and a specified time of flight
 
     Args:
-        mu (float): Standard gravitational parameter (G*M) of central body. m^3 s^-2 kg^-1
+        mu (float): Standard gravitational parameter (G*M) of central body. m^3 s^-2
         r_1 (NDArray): Array of shape (3,) representing the initial position of the body in Cartesian coordinates. Metres
         r_2 (NDArray): Array of shape (3,) representing the final position of the body in Cartesian coordinates. Metres
         delta_t (float): Time of flight between the  two specified positions. Seconds
