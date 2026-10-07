@@ -10,7 +10,7 @@ from time import perf_counter
 import os 
 from importlib.resources import files
 
-CONFIG_FPATH = files("astro_tools.engine").joinpath('constants.yaml')
+CONFIG_FPATH = files("astro_tools.engine").joinpath('config.yaml')
 
 
 class sim():

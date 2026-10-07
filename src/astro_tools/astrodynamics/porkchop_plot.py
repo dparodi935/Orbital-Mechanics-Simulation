@@ -1,8 +1,8 @@
 from .lamberts_problem import lambert
-import src.astro_tools.core.planetary_ephemerides as ephem
-from src.astro_tools.data import constants
-import src.astro_tools.utils.utility as utility 
-import src.astro_tools.core.astro_time as astro_time
+import astro_tools.core.planetary_ephemerides as ephem
+from astro_tools.data import constants
+import astro_tools.utils.utility as utility 
+import astro_tools.core.astro_time as astro_time
 
 import numpy as np
 from numpy.typing import NDArray
@@ -16,7 +16,7 @@ from pathlib import Path
 
 from importlib.resources import files
 
-data_path = files("src.astro_tools.data").joinpath("constants.yaml")
+data_path = files("astro_tools.data").joinpath("constants.yaml")
 yaml_constants = utility.open_yaml_file(data_path)
 
 G = constants.G

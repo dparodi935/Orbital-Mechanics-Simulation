@@ -27,7 +27,7 @@ class Body():
         self.velocity_history.append(np.copy(self.velocity))
         self.soi_history.append(self.soi)
     
-    def interpolate_history(self, time_values:list[float], intended_time_values:list[float]) -> tuple[NDArray, NDArray, list[Body]]:
+    def interpolate_history(self, time_values:list[float], intended_time_values:list[float]) -> tuple[NDArray, NDArray, list['Body']]:
         ''' Due to variable time step we need to interpolate the position/velocity data for the animation
         '''
         interpolated_position_history = []
